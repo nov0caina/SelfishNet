@@ -4,35 +4,24 @@ using System.Net.NetworkInformation;
 
 namespace SelfishNetV4
 {
-#pragma warning disable
     public class PC
-
     {
-        public IPAddress ip;
+        public string IP_String { get { return ip?.ToString() ?? "..."; } }
+        public string MAC_String { get { return mac?.ToString() ?? "..."; } }
+        
+        public bool Redirect { get; set; } = false;
+        public bool Block { get; set; } = false;
 
-        public PhysicalAddress mac;
+        public IPAddress ip { get; set; }
+        public PhysicalAddress mac { get; set; }
+        public string name { get; set; } = "Unknown";
+        
+        public bool isGateway { get; set; }
+        public bool isLocalPc { get; set; }
 
-        public string name;
-
-        public bool isGateway;
-
-        public bool isLocalPc;
-
-        public int capDown;
-
-        public int capUp;
-
-        public bool redirect;
-
-        public int totalPacketSent;
-
-        public int totalPacketReceived;
-
+        public DateTime timeSinceLastRarp { get; set; }
+        
         public int nbPacketSentSinceLastReset;
-
         public int nbPacketReceivedSinceLastReset;
-
-        public ValueType timeSinceLastRarp;
     }
-#pragma warning restore
 }

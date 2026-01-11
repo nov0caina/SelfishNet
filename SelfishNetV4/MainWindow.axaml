@@ -1,11 +1,53 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         x:Class="SelfishNetV4.MainWindow"
-        Title="SelfishNet" Width="400" Height="300">
-    <StackPanel Margin="20">
-        <TextBlock Text="Selecciona tu interfaz de red:" />
-        <ComboBox Name="NetInterfacesBox" />
-        <Button Name="BtnScan" Content="Escanear Red (Arp Discovery)" Click="OnScanClick" Margin="0,10,0,0"/>
-        <Button Name="BtnSpoof" Content="Iniciar Ataque" Click="OnSpoofClick" Margin="0,10,0,0"/>
-    </StackPanel>
+        Title="SelfishNet Linux V4" Width="800" Height="500"
+        Background="#1e1e1e">
+
+    <Grid RowDefinitions="Auto, *, Auto" Margin="10">
+    
+        <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="10" Margin="0,0,0,10">
+            <TextBlock Text="Interfaz:" VerticalAlignment="Center" Foreground="White"/>
+            <ComboBox Name="NetInterfacesBox" Width="200"/>
+            <Button Name="BtnScan" Content="🔍 Escanear Red" Click="OnScanClick" Background="#007ACC" Foreground="White"/>
+            <Button Name="BtnSpoof" Content="⚡ START ARP SPOOF" Click="OnSpoofClick" Background="#CA3E47" Foreground="White" FontWeight="Bold"/>
+        </StackPanel>
+
+        <Border Grid.Row="1" BorderBrush="#444" BorderThickness="1" Background="#252526">
+            <Grid RowDefinitions="Auto, *">
+            
+                <Grid Grid.Row="0" ColumnDefinitions="2*, 2*, 1*, 1*, 1*" Background="#333" Height="30">
+                    <TextBlock Text="IP Address" Grid.Column="0" VerticalAlignment="Center" Margin="10,0" Foreground="#AAA" FontWeight="Bold"/>
+                    <TextBlock Text="MAC Address" Grid.Column="1" VerticalAlignment="Center" Margin="10,0" Foreground="#AAA" FontWeight="Bold"/>
+                    <TextBlock Text="Download" Grid.Column="2" VerticalAlignment="Center" Margin="10,0" Foreground="#AAA" FontWeight="Bold"/>
+                    <TextBlock Text="Spoof" Grid.Column="3" VerticalAlignment="Center" HorizontalAlignment="Center" Foreground="#AAA" FontWeight="Bold"/>
+                    <TextBlock Text="Block" Grid.Column="4" VerticalAlignment="Center" HorizontalAlignment="Center" Foreground="#AAA" FontWeight="Bold"/>
+                </Grid>
+
+                <ListBox Grid.Row="1" Name="PcListBox" Background="Transparent">
+                    <ListBox.ItemTemplate>
+                    <DataTemplate>
+                            <Grid ColumnDefinitions="2*, 2*, 1*, 1*, 1*">
+                                <TextBlock Grid.Column="0" Text="{Binding IP_String}" VerticalAlignment="Center" Foreground="White"/>
+                        
+                                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="5">
+                                    <TextBlock Text="{Binding MAC_String}" VerticalAlignment="Center" Foreground="#DDD"/>
+                                    <TextBlock Text="(Router)" IsVisible="{Binding isGateway}" Foreground="Yellow" VerticalAlignment="Center"/>
+                                    <TextBlock Text="(You)" IsVisible="{Binding isLocalPc}" Foreground="Cyan" VerticalAlignment="Center"/>
+                                </StackPanel>
+
+                                <TextBlock Grid.Column="2" Text="0 KB/s" VerticalAlignment="Center" Foreground="Gray"/>
+
+                                <CheckBox Grid.Column="3" IsChecked="{Binding Redirect}" HorizontalAlignment="Center"/>
+                        
+                                <CheckBox Grid.Column="4" IsChecked="{Binding Block}" HorizontalAlignment="Center"/>
+                            </Grid>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </Grid>
+        </Border>
+
+        <TextBlock Grid.Row="2" Text="Ready." Name="StatusText" Foreground="Gray" Margin="0,5,0,0"/>
+    </Grid>
 </Window>
