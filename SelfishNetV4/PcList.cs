@@ -3,9 +3,10 @@ using System.Collections;
 using System.Runtime.InteropServices;
 using System.Threading;
 
-namespace SelfishNetv3
+namespace SelfishNetV4
 {
-#pragma warning disable  // Falta el comentario XML para el tipo o miembro visible pblicamente
+    public delegate void delegateOnNewPC(PC pc);
+#pragma warning disable
     public class PcList : IDisposable
 
     {
@@ -35,7 +36,12 @@ namespace SelfishNetv3
                 }
             }
             ArrayList.Synchronized(pclist).Add(pc);
-            delOnNewPC.Invoke(pc);
+
+            if (delOnNewPC != null)
+            {
+                delOnNewPC.Invoke(pc);
+            }
+
             Monitor.Exit(pclist.SyncRoot);
             return true;
         }
@@ -48,7 +54,11 @@ namespace SelfishNetv3
             {
                 if (item.ip.ToString().CompareTo(pc.ip.ToString()) == 0)
                 {
-                    delOnPCRemove.Invoke(pc);
+                    if (delOnPCRemove != null)
+                    {
+                        delOnPCRemove.Invoke(pc);
+                    }
+
                     pclist.Remove(pc);
                     Monitor.Exit(pclist.SyncRoot);
                     return true;
@@ -164,13 +174,13 @@ namespace SelfishNetv3
             delOnPCRemove = callback;
         }
 
-    
 
-        public  void Dispose()
+
+        public void Dispose()
         {
-            
+
             GC.SuppressFinalize(this);
         }
     }
-#pragma warning restore  // Falta el comentario XML para el tipo o miembro visible p�blicamente
+#pragma warning restore  
 }

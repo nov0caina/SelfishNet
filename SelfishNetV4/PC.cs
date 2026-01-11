@@ -2,9 +2,9 @@ using System;
 using System.Net;
 using System.Net.NetworkInformation;
 
-namespace SelfishNetv3
+namespace SelfishNetV4
 {
-#pragma warning disable  // Falta el comentario XML para el tipo o miembro visible p�blicamente
+#pragma warning disable
     public class PC
 
     {
@@ -34,5 +34,5 @@ namespace SelfishNetv3
 
         public ValueType timeSinceLastRarp;
     }
-#pragma warning restore  // Falta el comentario XML para el tipo o miembro visible p�blicamente
+#pragma warning restore
 }

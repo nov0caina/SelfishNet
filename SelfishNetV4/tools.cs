@@ -2,9 +2,9 @@ using System;
 using System.Net;
 using System.Runtime.InteropServices;
 
-namespace SelfishNetv3
+namespace SelfishNetV4 
 {
-#pragma warning disable  // Falta el comentario XML para el tipo o miembro visible p�blicamente
+#pragma warning disable
     public class tools
 
     {
@@ -53,5 +53,5 @@ namespace SelfishNetv3
             return false;
         }
     }
-#pragma warning restore  // Falta el comentario XML para el tipo o miembro visible p�blicamente
+#pragma warning restore
 }

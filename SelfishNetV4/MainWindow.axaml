@@ -1,0 +1,11 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="SelfishNetV4.MainWindow"
+        Title="SelfishNet" Width="400" Height="300">
+    <StackPanel Margin="20">
+        <TextBlock Text="Selecciona tu interfaz de red:" />
+        <ComboBox Name="NetInterfacesBox" />
+        <Button Name="BtnScan" Content="Escanear Red (Arp Discovery)" Click="OnScanClick" Margin="0,10,0,0"/>
+        <Button Name="BtnSpoof" Content="Iniciar Ataque" Click="OnSpoofClick" Margin="0,10,0,0"/>
+    </StackPanel>
+</Window>
