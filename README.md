@@ -3,7 +3,7 @@
 ## Control your internet bandwidth with SelfishNet.
 [Currently in development]
 
-## Linux Native Migration (Branch: linuxDevEnv_migration)
+## Linux Native (Cross-Platform) Migration (Branch: linuxDevEnv_migration)
 
 This branch contains a complete rewrite of the SelfishNet core and UI to enable native execution on **Linux** and MacOS, removing the exclusive dependency on Windows.
 
@@ -19,9 +19,9 @@ The original project relied on obsolete technologies (.NET Framework 3.5, WinPca
 | **Network Driver** | PcapNet / WinPcap | **SharpPcap** (via libpcap/Npcap) |
 | **Interoperability** | P/Invoke (`user32.dll`) | **Managed Native** (No external dependencies) |
 
-# 📋 Prerequisites
+### 📋 Prerequisites
 
-## 1. Windows 🪟
+#### 1. Windows 🪟
 
 * **Framework:** .NET 8.0 SDK.
 * **Driver:** Npcap (Download from [nmap.org/npcap](https://nmap.org/npcap/)).
@@ -29,7 +29,7 @@ The original project relied on obsolete technologies (.NET Framework 3.5, WinPca
 * **Permissions:** You must run the application as **Administrator**.
 ---
 
-## 2. macOS 🍎
+#### 2. MacOS 🍎
 
 * **Framework:** .NET 8.0 SDK.
 * **Library:** libpcap (Usually pre-installed, or via Homebrew: `brew install libpcap`).
@@ -38,7 +38,7 @@ The original project relied on obsolete technologies (.NET Framework 3.5, WinPca
     `sudo sysctl -w net.inet.ip.forwarding=1`
 ---
 
-## 3. Linux 🐧
+#### 3. Linux 🐧
 
 * **Framework:** .NET 8.0 SDK.
 * **Library:** `libpcap-dev` package (Install via `apt`, `dnf`, or `pacman`).
@@ -48,7 +48,7 @@ The original project relied on obsolete technologies (.NET Framework 3.5, WinPca
 
 _____________________________________________________________________________________________________________________________________
 
-## Migración a Linux Native (Rama: linuxDevEnv_migration)
+## Migración a Linux Native (Multi-Plataforma) (Rama: linuxDevEnv_migration)
 
 Esta rama contiene la reescritura completa del núcleo y la interfaz de SelfishNet para permitir su ejecución nativa en **Linux** y MacOS, eliminando la dependencia exclusiva de Windows.
 
@@ -65,20 +65,18 @@ El proyecto original dependía de tecnologías obsoletas (.NET 3.5, WinPcap) y l
 | **Interoperabilidad** | P/Invoke (`user32.dll`) | **Nativa Managed** (Sin dependencias externas) |
 
 
-# 📋 Prerrequisitos
+### 📋 Prerrequisitos
 
-## 1. Windows 🪟
+#### 1. Windows 🪟
 
-### Español
 * **Framework:** SDK de .NET 8.0.
 * **Driver:** Npcap (Descargar desde [nmap.org/npcap](https://nmap.org/npcap/)).
     * *Importante:* Durante la instalación, marca la casilla **"Install Npcap in WinPcap API-compatible Mode"**.
 * **Permisos:** Debes ejecutar la aplicación como **Administrador**.
 ---
 
-## 2. macOS 🍎
+#### 2. MacOS 🍎
 
-### Español
 * **Framework:** SDK de .NET 8.0.
 * **Librería:** libpcap (Usualmente preinstalada, o vía Homebrew: `brew install libpcap`).
 * **Permisos:** Se requiere ejecución con `sudo` para acceder al hardware de red.
@@ -86,7 +84,7 @@ El proyecto original dependía de tecnologías obsoletas (.NET 3.5, WinPcap) y l
     `sudo sysctl -w net.inet.ip.forwarding=1`
 ---
 
-## 3. Linux 🐧
+#### 3. Linux 🐧
 
 * **Framework:** SDK de .NET 8.0.
 * **Librería:** Paquete `libpcap-dev` (Instalar vía `apt`, `dnf` o `pacman`).
