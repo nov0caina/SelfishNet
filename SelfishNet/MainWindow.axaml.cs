@@ -6,7 +6,7 @@ using System;
 using System.Collections.ObjectModel;
 using System.Linq;
 
-namespace SelfishNetV4
+namespace SelfishNet
 {
     public partial class MainWindow : Window
     {
@@ -58,6 +58,7 @@ namespace SelfishNetV4
                 engine = new CArp(device, logicalList);
             }
 
+            engine.ClearDeviceList();
             DetectedPCs.Clear();
             engine.startArpListener();
             engine.startArpDiscovery();

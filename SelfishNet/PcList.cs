@@ -3,7 +3,7 @@ using System.Collections;
 using System.Runtime.InteropServices;
 using System.Threading;
 
-namespace SelfishNetV4
+namespace SelfishNet
 {
     public delegate void delegateOnNewPC(PC pc);
 #pragma warning disable
@@ -174,7 +174,12 @@ namespace SelfishNetV4
             delOnPCRemove = callback;
         }
 
-
+        public void Clear()
+        {
+            Monitor.Enter(pclist.SyncRoot);
+            pclist.Clear();
+            Monitor.Exit(pclist.SyncRoot);
+        }
 
         public void Dispose()
         {

@@ -1,7 +1,7 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        x:Class="SelfishNetV4.MainWindow"
-        Title="SelfishNet Linux V4" Width="800" Height="500"
+        x:Class="SelfishNet.MainWindow"
+        Title="SelfishNet" Width="800" Height="500"
         Background="#1e1e1e">
 
     <Grid RowDefinitions="Auto, *, Auto" Margin="10">

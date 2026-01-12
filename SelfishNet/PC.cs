@@ -2,7 +2,7 @@ using System;
 using System.Net;
 using System.Net.NetworkInformation;
 
-namespace SelfishNetV4
+namespace SelfishNet
 {
     public class PC
     {

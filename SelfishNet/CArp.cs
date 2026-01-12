@@ -5,7 +5,7 @@ using System.Threading;
 using SharpPcap;
 using SharpPcap.LibPcap;
 
-namespace SelfishNetV4
+namespace SelfishNet
 {
     public class CArp : IDisposable
     {
@@ -238,6 +238,14 @@ namespace SelfishNetV4
             Array.Copy(arpDestMac, 0, array, 32, 6);
             Array.Copy(arpDestIP, 0, array, 38, 4);
             return array;
+        }
+
+        public void ClearDeviceList()
+        {
+            if (pcList != null)
+            {
+                pcList.Clear();
+            }
         }
 
         public void Dispose()

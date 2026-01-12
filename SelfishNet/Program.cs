@@ -1,7 +1,7 @@
 ﻿using Avalonia;
 using System;
 
-namespace SelfishNetV4;
+namespace SelfishNet;
 
 class Program
 {

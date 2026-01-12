@@ -2,7 +2,7 @@ using System;
 using System.Net;
 using System.Runtime.InteropServices;
 
-namespace SelfishNetV4 
+namespace SelfishNet 
 {
 #pragma warning disable
     public class tools
