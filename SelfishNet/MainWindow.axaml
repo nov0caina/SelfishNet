@@ -28,15 +28,15 @@
                     <ListBox.ItemTemplate>
                     <DataTemplate>
                             <Grid ColumnDefinitions="2*, 2*, 1*, 1*, 1*">
-                                <TextBlock Grid.Column="0" Text="{Binding IP_String}" VerticalAlignment="Center" Foreground="White"/>
+                                <TextBlock Grid.Column="0" Text="{Binding IpDisplay}" VerticalAlignment="Center" Foreground="White"/>
                         
                                 <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="5">
-                                    <TextBlock Text="{Binding MAC_String}" VerticalAlignment="Center" Foreground="#DDD"/>
-                                    <TextBlock Text="(Router)" IsVisible="{Binding isGateway}" Foreground="Yellow" VerticalAlignment="Center"/>
-                                    <TextBlock Text="(You)" IsVisible="{Binding isLocalPc}" Foreground="Cyan" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{Binding MacDisplay}" VerticalAlignment="Center" Foreground="#DDD"/>
+                                    <TextBlock Text="(Router)" IsVisible="{Binding IsGateway}" Foreground="Yellow" VerticalAlignment="Center"/>
+                                    <TextBlock Text="(You)" IsVisible="{Binding IsLocalPc}" Foreground="Cyan" VerticalAlignment="Center"/>
                                 </StackPanel>
 
-                                <TextBlock Grid.Column="2" Text="0 KB/s" VerticalAlignment="Center" Foreground="Gray"/>
+                                <TextBlock Grid.Column="2" Text="{Binding DownloadSpeed}" VerticalAlignment="Center" Foreground="Gray"/>
 
                                 <CheckBox Grid.Column="3" IsChecked="{Binding Redirect}" HorizontalAlignment="Center"/>
                         

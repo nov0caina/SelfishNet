@@ -1,191 +1,161 @@
 using System;
-using System.Collections;
-using System.Runtime.InteropServices;
-using System.Threading;
+using System.Collections.Generic;
 
 namespace SelfishNet
 {
-    public delegate void delegateOnNewPC(PC pc);
-#pragma warning disable
+    /// <summary>Callback when a device is detected or removed.</summary>
+    public delegate void OnDeviceEvent(PC pc);
+
     public class PcList : IDisposable
-
     {
-        private delegateOnNewPC delOnNewPC;
+        private OnDeviceEvent _onDeviceAdded;
+        private OnDeviceEvent _onDeviceRemoved;
 
-        private delegateOnNewPC delOnPCRemove;
+        private readonly object _syncLock = new();
+        private readonly List<PC> _devices = new();
 
-        public ArrayList pclist;
-
-        public PcList()
+        /// <summary>
+        /// Returns a thread-safe snapshot (array copy) for external iteration.
+        /// </summary>
+        public IReadOnlyList<PC> Devices
         {
-            pclist = new ArrayList();
-        }
-
-        [return: MarshalAs(UnmanagedType.U1)]
-        public bool addPcToList(PC pc)
-        {
-            Monitor.Enter(pclist.SyncRoot);
-            foreach (PC item in pclist)
+            get
             {
-                if (item.ip.ToString().CompareTo(pc.ip.ToString()) == 0)
+                lock (_syncLock)
                 {
-                    DateTime now = DateTime.Now;
-                    item.timeSinceLastRarp = now;
-                    Monitor.Exit(pclist.SyncRoot);
-                    return false;
+                    return _devices.ToArray();
                 }
             }
-            ArrayList.Synchronized(pclist).Add(pc);
+        }
 
-            if (delOnNewPC != null)
+        public bool AddDevice(PC pc)
+        {
+            lock (_syncLock)
             {
-                delOnNewPC.Invoke(pc);
+                foreach (PC item in _devices)
+                {
+                    if (item.Ip.ToString().CompareTo(pc.Ip.ToString()) == 0)
+                    {
+                        item.TimeSinceLastArp = DateTime.Now;
+                        return false;
+                    }
+                }
+                _devices.Add(pc);
             }
 
-            Monitor.Exit(pclist.SyncRoot);
+            // Invoke callback outside lock to prevent UI thread deadlocks
+            _onDeviceAdded?.Invoke(pc);
             return true;
         }
 
-        [return: MarshalAs(UnmanagedType.U1)]
-        public bool removePcFromList(PC pc)
+        public bool RemoveDevice(PC pc)
         {
-            Monitor.Enter(pclist.SyncRoot);
-            foreach (PC item in pclist)
+            PC found = null;
+            lock (_syncLock)
             {
-                if (item.ip.ToString().CompareTo(pc.ip.ToString()) == 0)
+                for (int i = 0; i < _devices.Count; i++)
                 {
-                    if (delOnPCRemove != null)
+                    if (_devices[i].Ip.ToString().CompareTo(pc.Ip.ToString()) == 0)
                     {
-                        delOnPCRemove.Invoke(pc);
+                        found = _devices[i];
+                        _devices.RemoveAt(i);
+                        break;
                     }
-
-                    pclist.Remove(pc);
-                    Monitor.Exit(pclist.SyncRoot);
-                    return true;
                 }
             }
-            Monitor.Exit(pclist.SyncRoot);
+
+            if (found != null)
+            {
+                _onDeviceRemoved?.Invoke(pc);
+                return true;
+            }
             return false;
         }
 
-        public PC getRouter()
+        public PC GetRouter()
         {
-            Monitor.Enter(pclist.SyncRoot);
-            IEnumerator enumerator = pclist.GetEnumerator();
-            if (enumerator.MoveNext())
+            lock (_syncLock)
             {
-                do
+                foreach (PC item in _devices)
                 {
-                    if (((PC)enumerator.Current).isGateway)
-                    {
-                        Monitor.Exit(pclist.SyncRoot);
-                        return (PC)enumerator.Current;
-                    }
+                    if (item.IsGateway) return item;
                 }
-                while (enumerator.MoveNext());
             }
-            Monitor.Exit(pclist.SyncRoot);
             return null;
         }
 
-        public PC getLocalPC()
+        public PC GetLocalPC()
         {
-            Monitor.Enter(pclist.SyncRoot);
-            IEnumerator enumerator = pclist.GetEnumerator();
-            if (enumerator.MoveNext())
+            lock (_syncLock)
             {
-                do
+                foreach (PC item in _devices)
                 {
-                    if (((PC)enumerator.Current).isLocalPc)
-                    {
-                        Monitor.Exit(pclist.SyncRoot);
-                        return (PC)enumerator.Current;
-                    }
+                    if (item.IsLocalPc) return item;
                 }
-                while (enumerator.MoveNext());
             }
-            Monitor.Exit(pclist.SyncRoot);
             return null;
         }
 
-        public PC getPCFromIP(byte[] ip)
+        public PC GetDeviceByIp(byte[] ip)
         {
-            Monitor.Enter(pclist.SyncRoot);
-            IEnumerator enumerator = pclist.GetEnumerator();
-            if (enumerator.MoveNext())
+            lock (_syncLock)
             {
-                do
+                foreach (PC item in _devices)
                 {
-                    if (tools.areValuesEqual(((PC)enumerator.Current).ip.GetAddressBytes(), ip))
-                    {
-                        Monitor.Exit(pclist.SyncRoot);
-                        return (PC)enumerator.Current;
-                    }
+                    if (Tools.AreValuesEqual(item.Ip.GetAddressBytes(), ip))
+                        return item;
                 }
-                while (enumerator.MoveNext());
             }
-            Monitor.Exit(pclist.SyncRoot);
             return null;
         }
 
-        public PC getPCFromMac(byte[] Mac)
+        public PC GetDeviceByMac(byte[] mac)
         {
-            Monitor.Enter(pclist.SyncRoot);
-            IEnumerator enumerator = pclist.GetEnumerator();
-            if (enumerator.MoveNext())
+            lock (_syncLock)
             {
-                do
+                foreach (PC item in _devices)
                 {
-                    if (tools.areValuesEqual(((PC)enumerator.Current).mac.GetAddressBytes(), Mac))
-                    {
-                        Monitor.Exit(pclist.SyncRoot);
-                        return (PC)enumerator.Current;
-                    }
+                    if (Tools.AreValuesEqual(item.Mac.GetAddressBytes(), mac))
+                        return item;
                 }
-                while (enumerator.MoveNext());
             }
-            Monitor.Exit(pclist.SyncRoot);
             return null;
         }
 
-        public void ResetAllPacketsCount()
+        public void ResetAllPacketCounts()
         {
-            Monitor.Enter(pclist.SyncRoot);
-            IEnumerator enumerator = pclist.GetEnumerator();
-            if (enumerator.MoveNext())
+            lock (_syncLock)
             {
-                do
+                foreach (PC item in _devices)
                 {
-                    ((PC)enumerator.Current).nbPacketReceivedSinceLastReset = 0;
-                    ((PC)enumerator.Current).nbPacketSentSinceLastReset = 0;
+                    item.BytesReceived = 0;
+                    item.BytesSent = 0;
                 }
-                while (enumerator.MoveNext());
             }
-            Monitor.Exit(pclist.SyncRoot);
         }
 
-        public void SetCallBackOnNewPC(delegateOnNewPC callback)
+        public void SetOnDeviceAdded(OnDeviceEvent callback)
         {
-            delOnNewPC = callback;
+            _onDeviceAdded = callback;
         }
 
-        public void SetCallBackOnPCRemove(delegateOnNewPC callback)
+        public void SetOnDeviceRemoved(OnDeviceEvent callback)
         {
-            delOnPCRemove = callback;
+            _onDeviceRemoved = callback;
         }
 
         public void Clear()
         {
-            Monitor.Enter(pclist.SyncRoot);
-            pclist.Clear();
-            Monitor.Exit(pclist.SyncRoot);
+            lock (_syncLock)
+            {
+                _devices.Clear();
+            }
         }
 
         public void Dispose()
         {
-
+            Clear();
             GC.SuppressFinalize(this);
         }
     }
-#pragma warning restore  
 }
