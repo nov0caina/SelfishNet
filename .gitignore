@@ -55,3 +55,6 @@ Desktop.ini
 *.cap
 logs/
 temp/
+.env
+.analisis.md
+.analisis.pdf
