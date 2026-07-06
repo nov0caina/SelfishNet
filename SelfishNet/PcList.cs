@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Threading;
 
 namespace SelfishNet
 {
@@ -10,6 +11,7 @@ namespace SelfishNet
     {
         private OnDeviceEvent _onDeviceAdded;
         private OnDeviceEvent _onDeviceRemoved;
+        private IDeviceIdentifierService _identifierService;
 
         private readonly object _syncLock = new();
         private readonly List<PC> _devices = new();
@@ -45,6 +47,13 @@ namespace SelfishNet
 
             // Invoke callback outside lock to prevent UI thread deadlocks
             _onDeviceAdded?.Invoke(pc);
+
+            // Fire-and-forget device identification (OUI + DNS + heuristic)
+            if (_identifierService != null)
+            {
+                _ = _identifierService.IdentifyDeviceAsync(pc, CancellationToken.None);
+            }
+
             return true;
         }
 
@@ -142,6 +151,11 @@ namespace SelfishNet
         public void SetOnDeviceRemoved(OnDeviceEvent callback)
         {
             _onDeviceRemoved = callback;
+        }
+
+        public void SetIdentifierService(IDeviceIdentifierService service)
+        {
+            _identifierService = service;
         }
 
         public void Clear()

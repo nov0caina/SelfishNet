@@ -11,6 +11,7 @@ namespace SelfishNet
     public partial class MainWindow : Window
     {
         private CArp _engine;
+        private IDeviceIdentifierService _identifierService;
         public ObservableCollection<PC> DetectedPCs { get; set; }
 
         public MainWindow()
@@ -67,6 +68,9 @@ namespace SelfishNet
             if (_engine != null)
             {
                 SetStatus("Stopping previous scan...", "#FF9800");
+                _identifierService?.StopMdnsListener();
+                _identifierService?.Dispose();
+                _identifierService = null;
                 _engine.StopArpListener();
                 _engine.StopDiscovery();
                 _engine.StopSpoofing();
@@ -96,6 +100,10 @@ namespace SelfishNet
 
                 _engine = new CArp(device, deviceList);
 
+                // Initialize device identifier service (OUI + DNS + mDNS + heuristics)
+                _identifierService = new DeviceIdentifierService(device, deviceList);
+                deviceList.SetIdentifierService(_identifierService);
+
                 // Show detected network info
                 string localIp = _engine.LocalIp != null ? new System.Net.IPAddress(_engine.LocalIp).ToString() : "N/A";
                 string routerIp = _engine.RouterIp != null ? new System.Net.IPAddress(_engine.RouterIp).ToString() : "N/A";
@@ -105,6 +113,7 @@ namespace SelfishNet
                 _engine.StartArpListener();
                 _engine.StartArpDiscovery();
                 _engine.StartTrafficMonitor();
+                _identifierService.StartMdnsListener();
             }
             catch (Exception ex)
             {
@@ -163,6 +172,9 @@ namespace SelfishNet
 
         protected override void OnClosed(EventArgs e)
         {
+            _identifierService?.StopMdnsListener();
+            _identifierService?.Dispose();
+            _identifierService = null;
             _engine?.Dispose();
             _engine = null;
             base.OnClosed(e);

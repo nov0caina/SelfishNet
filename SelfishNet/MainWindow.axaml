@@ -1,7 +1,7 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         x:Class="SelfishNet.MainWindow"
-        Title="SelfishNet" Width="800" Height="500"
+        Title="SelfishNet by Nov0caina" Width="800" Height="500"
         Background="#1e1e1e">
 
     <Grid RowDefinitions="Auto, *, Auto" Margin="10">
@@ -16,18 +16,20 @@
         <Border Grid.Row="1" BorderBrush="#444" BorderThickness="1" Background="#252526">
             <Grid RowDefinitions="Auto, *">
             
-                <Grid Grid.Row="0" ColumnDefinitions="2*, 2*, 1*, 1*, 1*" Background="#333" Height="30">
+                <Grid Grid.Row="0" ColumnDefinitions="1.2*, 1.5*, 2*, 1.5*, 0.6*, 0.6*" Background="#333" Height="30">
                     <TextBlock Text="IP Address" Grid.Column="0" VerticalAlignment="Center" Margin="10,0" Foreground="#AAA" FontWeight="Bold"/>
                     <TextBlock Text="MAC Address" Grid.Column="1" VerticalAlignment="Center" Margin="10,0" Foreground="#AAA" FontWeight="Bold"/>
-                    <TextBlock Text="Download" Grid.Column="2" VerticalAlignment="Center" Margin="10,0" Foreground="#AAA" FontWeight="Bold"/>
-                    <TextBlock Text="Spoof" Grid.Column="3" VerticalAlignment="Center" HorizontalAlignment="Center" Foreground="#AAA" FontWeight="Bold"/>
-                    <TextBlock Text="Block" Grid.Column="4" VerticalAlignment="Center" HorizontalAlignment="Center" Foreground="#AAA" FontWeight="Bold"/>
+                    <TextBlock Text="Device" Grid.Column="2" VerticalAlignment="Center" Margin="10,0" Foreground="#AAA" FontWeight="Bold"/>
+                    <TextBlock Text="Traffic" Grid.Column="3" VerticalAlignment="Center" Margin="10,0" Foreground="#AAA" FontWeight="Bold"
+                               ToolTip.Tip="Traffic monitoring requires ARP Spoof active with Redirect ✓"/>
+                    <TextBlock Text="Spoof" Grid.Column="4" VerticalAlignment="Center" HorizontalAlignment="Center" Foreground="#AAA" FontWeight="Bold"/>
+                    <TextBlock Text="Block" Grid.Column="5" VerticalAlignment="Center" HorizontalAlignment="Center" Foreground="#AAA" FontWeight="Bold"/>
                 </Grid>
 
                 <ListBox Grid.Row="1" Name="PcListBox" Background="Transparent">
                     <ListBox.ItemTemplate>
                     <DataTemplate>
-                            <Grid ColumnDefinitions="2*, 2*, 1*, 1*, 1*">
+                            <Grid ColumnDefinitions="1.2*, 1.5*, 2*, 1.5*, 0.6*, 0.6*">
                                 <TextBlock Grid.Column="0" Text="{Binding IpDisplay}" VerticalAlignment="Center" Foreground="White"/>
                         
                                 <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="5">
@@ -36,11 +38,13 @@
                                     <TextBlock Text="(You)" IsVisible="{Binding IsLocalPc}" Foreground="Cyan" VerticalAlignment="Center"/>
                                 </StackPanel>
 
-                                <TextBlock Grid.Column="2" Text="{Binding DownloadSpeed}" VerticalAlignment="Center" Foreground="Gray"/>
+                                <TextBlock Grid.Column="2" Text="{Binding DeviceLabel}" VerticalAlignment="Center" Foreground="#4FC3F7" FontSize="12"/>
 
-                                <CheckBox Grid.Column="3" IsChecked="{Binding Redirect}" HorizontalAlignment="Center"/>
+                                <TextBlock Grid.Column="3" Text="{Binding DownloadSpeed}" VerticalAlignment="Center" Foreground="#81C784" FontSize="11"/>
+
+                                <CheckBox Grid.Column="4" IsChecked="{Binding Redirect}" HorizontalAlignment="Center"/>
                         
-                                <CheckBox Grid.Column="4" IsChecked="{Binding Block}" HorizontalAlignment="Center"/>
+                                <CheckBox Grid.Column="5" IsChecked="{Binding Block}" HorizontalAlignment="Center"/>
                             </Grid>
                         </DataTemplate>
                     </ListBox.ItemTemplate>
