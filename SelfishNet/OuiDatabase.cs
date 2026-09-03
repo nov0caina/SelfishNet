@@ -35,7 +35,7 @@ namespace SelfishNet
             {0x70_8A_09, "Huawei"}, {0x24_69_A5, "Huawei"}, {0x04_F9_38, "Huawei"},
             // Realtek (WiFi/Ethernet chipsets)
             {0x00_E0_4C, "Realtek"}, {0x48_5D_36, "Realtek"}, {0xDC_02_8E, "Realtek"},
-            {0x00_0C_E7, "Realtek"}, {0x52_54_00, "Realtek"},
+            {0x52_54_00, "Realtek"},
             // Espressif (ESP32/ESP8266 IoT)
             {0x24_0A_C4, "Espressif"}, {0xA4_CF_12, "Espressif"}, {0x30_AE_A4, "Espressif"},
             {0xAC_67_B2, "Espressif"}, {0xCC_50_E3, "Espressif"},
