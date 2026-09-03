@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Net;
 using System.Threading;
 
 namespace SelfishNet
@@ -32,26 +33,40 @@ namespace SelfishNet
 
         public bool AddDevice(PC pc)
         {
+            if (pc?.Ip == null) return false;
+
+            bool isNew = false;
             lock (_syncLock)
             {
                 foreach (PC item in _devices)
                 {
-                    if (item.Ip.ToString().CompareTo(pc.Ip.ToString()) == 0)
+                    if (item.Ip != null && item.Ip.Equals(pc.Ip))
                     {
                         item.TimeSinceLastArp = DateTime.Now;
+                        // Update MAC if changed or newly detected
+                        if (pc.Mac != null && (item.Mac == null || !item.Mac.Equals(pc.Mac)))
+                        {
+                            item.Mac = pc.Mac;
+                        }
+                        if (pc.IsGateway && !item.IsGateway) item.IsGateway = true;
+                        if (pc.IsLocalPc && !item.IsLocalPc) item.IsLocalPc = true;
                         return false;
                     }
                 }
                 _devices.Add(pc);
+                isNew = true;
             }
 
-            // Invoke callback outside lock to prevent UI thread deadlocks
-            _onDeviceAdded?.Invoke(pc);
-
-            // Fire-and-forget device identification (OUI + DNS + heuristic)
-            if (_identifierService != null)
+            if (isNew)
             {
-                _ = _identifierService.IdentifyDeviceAsync(pc, CancellationToken.None);
+                // Invoke callback outside lock to prevent UI thread deadlocks
+                _onDeviceAdded?.Invoke(pc);
+
+                // Fire-and-forget device identification (OUI + DNS + heuristic)
+                if (_identifierService != null)
+                {
+                    _ = _identifierService.IdentifyDeviceAsync(pc, CancellationToken.None);
+                }
             }
 
             return true;
@@ -59,12 +74,13 @@ namespace SelfishNet
 
         public bool RemoveDevice(PC pc)
         {
+            if (pc?.Ip == null) return false;
             PC found = null;
             lock (_syncLock)
             {
                 for (int i = 0; i < _devices.Count; i++)
                 {
-                    if (_devices[i].Ip.ToString().CompareTo(pc.Ip.ToString()) == 0)
+                    if (_devices[i].Ip != null && _devices[i].Ip.Equals(pc.Ip))
                     {
                         found = _devices[i];
                         _devices.RemoveAt(i);
@@ -75,7 +91,7 @@ namespace SelfishNet
 
             if (found != null)
             {
-                _onDeviceRemoved?.Invoke(pc);
+                _onDeviceRemoved?.Invoke(found);
                 return true;
             }
             return false;
@@ -105,13 +121,28 @@ namespace SelfishNet
             return null;
         }
 
-        public PC GetDeviceByIp(byte[] ip)
+        public PC GetDeviceByIp(IPAddress ip)
         {
+            if (ip == null) return null;
             lock (_syncLock)
             {
                 foreach (PC item in _devices)
                 {
-                    if (Tools.AreValuesEqual(item.Ip.GetAddressBytes(), ip))
+                    if (item.Ip != null && item.Ip.Equals(ip))
+                        return item;
+                }
+            }
+            return null;
+        }
+
+        public PC GetDeviceByIp(byte[] ip)
+        {
+            if (ip == null) return null;
+            lock (_syncLock)
+            {
+                foreach (PC item in _devices)
+                {
+                    if (item.Ip != null && Tools.AreValuesEqual(item.Ip.GetAddressBytes(), ip))
                         return item;
                 }
             }
@@ -120,11 +151,12 @@ namespace SelfishNet
 
         public PC GetDeviceByMac(byte[] mac)
         {
+            if (mac == null) return null;
             lock (_syncLock)
             {
                 foreach (PC item in _devices)
                 {
-                    if (Tools.AreValuesEqual(item.Mac.GetAddressBytes(), mac))
+                    if (item.Mac != null && Tools.AreValuesEqual(item.Mac.GetAddressBytes(), mac))
                         return item;
                 }
             }

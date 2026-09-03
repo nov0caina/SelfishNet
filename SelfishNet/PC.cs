@@ -76,12 +76,75 @@ namespace SelfishNet
             }
         }
 
-        // ── State flags ──
+        private bool _redirect = false;
+        public bool Redirect
+        {
+            get => _redirect;
+            set
+            {
+                if (CanControl && _redirect != value)
+                {
+                    _redirect = value;
+                    OnPropertyChanged();
+                    if (_redirect && _block)
+                    {
+                        _block = false;
+                        OnPropertyChanged(nameof(Block));
+                    }
+                }
+            }
+        }
 
-        public bool Redirect { get; set; } = false;
-        public bool Block { get; set; } = false;
-        public bool IsGateway { get; set; }
-        public bool IsLocalPc { get; set; }
+        private bool _block = false;
+        public bool Block
+        {
+            get => _block;
+            set
+            {
+                if (CanControl && _block != value)
+                {
+                    _block = value;
+                    OnPropertyChanged();
+                    if (_block && _redirect)
+                    {
+                        _redirect = false;
+                        OnPropertyChanged(nameof(Redirect));
+                    }
+                }
+            }
+        }
+
+        private bool _isGateway;
+        public bool IsGateway
+        {
+            get => _isGateway;
+            set
+            {
+                if (_isGateway != value)
+                {
+                    _isGateway = value;
+                    OnPropertyChanged();
+                    OnPropertyChanged(nameof(CanControl));
+                }
+            }
+        }
+
+        private bool _isLocalPc;
+        public bool IsLocalPc
+        {
+            get => _isLocalPc;
+            set
+            {
+                if (_isLocalPc != value)
+                {
+                    _isLocalPc = value;
+                    OnPropertyChanged();
+                    OnPropertyChanged(nameof(CanControl));
+                }
+            }
+        }
+
+        public bool CanControl => !IsLocalPc && !IsGateway;
 
         // ── Tracking ──
 

@@ -7,18 +7,24 @@ namespace SelfishNet
     {
         public static IPAddress ParseIpAddress(string ip)
         {
-            string[] parts = ip.Split('.');
-            byte[] bytes = new byte[4];
-            for (int i = 0; i < 4; i++)
+            if (string.IsNullOrWhiteSpace(ip)) return IPAddress.None;
+            if (IPAddress.TryParse(ip.Trim(), out var parsed))
             {
-                bytes[i] = Convert.ToByte(parts[i]);
+                return parsed;
             }
-            return new IPAddress(bytes);
+            return IPAddress.None;
         }
 
         public static bool AreValuesEqual(byte[] a, byte[] b)
         {
-            return a != null && b != null && a.AsSpan().SequenceEqual(b);
+            if (ReferenceEquals(a, b)) return true;
+            if (a == null || b == null) return false;
+            return a.AsSpan().SequenceEqual(b);
+        }
+
+        public static bool AreValuesEqual(ReadOnlySpan<byte> a, ReadOnlySpan<byte> b)
+        {
+            return a.SequenceEqual(b);
         }
     }
 }
