@@ -36,6 +36,24 @@ if [ "$EUID" -ne 0 ]; then
     exec sudo bash "$0" "$@"
 fi
 
+# ── Cleanup Handler ──
+cleanup() {
+    echo ""
+    echo -e "${YELLOW}[Cleanup] Restoring network state...${NC}"
+    if [ -n "$CURRENT_FWD" ]; then
+        sysctl -w net.ipv4.ip_forward=$CURRENT_FWD > /dev/null 2>&1
+        echo -e "${GREEN}[✓] IP forwarding restored to previous state ($CURRENT_FWD).${NC}"
+    fi
+
+    # Flush residual tc qdiscs if tc is present
+    if command -v tc >/dev/null 2>&1; then
+        for iface in $(ip -o link show 2>/dev/null | awk -F': ' '{print $2}' | cut -d'@' -f1 | grep -v "lo"); do
+            tc qdisc del dev "$iface" root >/dev/null 2>&1 || true
+        done
+    fi
+}
+trap cleanup EXIT
+
 # ── Enable IP forwarding (required for MITM) ──
 echo -e "${YELLOW}[1/2] Enabling IP forwarding...${NC}"
 CURRENT_FWD=$(cat /proc/sys/net/ipv4/ip_forward)
@@ -50,8 +68,5 @@ cd "$PROJECT_DIR"
 dotnet run --configuration Release --no-build
 EXIT_CODE=$?
 
-# ── Restore IP forwarding to previous state ──
-sysctl -w net.ipv4.ip_forward=$CURRENT_FWD > /dev/null 2>&1
-echo -e "${GREEN}[✓] IP forwarding restored to previous state ($CURRENT_FWD).${NC}"
-
 exit $EXIT_CODE
+
