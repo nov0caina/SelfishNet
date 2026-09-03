@@ -86,6 +86,7 @@ namespace SelfishNet
                 {
                     _redirect = value;
                     OnPropertyChanged();
+                    OnPropertyChanged(nameof(IsThrottlingEnabled));
                     if (_redirect && _block)
                     {
                         _block = false;
@@ -109,10 +110,30 @@ namespace SelfishNet
                     {
                         _redirect = false;
                         OnPropertyChanged(nameof(Redirect));
+                        OnPropertyChanged(nameof(IsThrottlingEnabled));
                     }
                 }
             }
         }
+
+        private int _bandwidthLimitKb = 0;
+        /// <summary>Allowed bandwidth limit in KB/s (0 = Unlimited).</summary>
+        public int BandwidthLimitKb
+        {
+            get => _bandwidthLimitKb;
+            set
+            {
+                int clamped = Math.Max(0, value);
+                if (_bandwidthLimitKb != clamped)
+                {
+                    _bandwidthLimitKb = clamped;
+                    OnPropertyChanged();
+                    OnPropertyChanged(nameof(BandwidthLimitDisplay));
+                }
+            }
+        }
+
+        public string BandwidthLimitDisplay => _bandwidthLimitKb == 0 ? "Unlimited" : $"{_bandwidthLimitKb} KB/s";
 
         private bool _isGateway;
         public bool IsGateway
@@ -125,6 +146,7 @@ namespace SelfishNet
                     _isGateway = value;
                     OnPropertyChanged();
                     OnPropertyChanged(nameof(CanControl));
+                    OnPropertyChanged(nameof(IsThrottlingEnabled));
                 }
             }
         }
@@ -140,11 +162,14 @@ namespace SelfishNet
                     _isLocalPc = value;
                     OnPropertyChanged();
                     OnPropertyChanged(nameof(CanControl));
+                    OnPropertyChanged(nameof(IsThrottlingEnabled));
                 }
             }
         }
 
         public bool CanControl => !IsLocalPc && !IsGateway;
+
+        public bool IsThrottlingEnabled => CanControl && _redirect;
 
         // ── Tracking ──
 

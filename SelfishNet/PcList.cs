@@ -177,12 +177,12 @@ namespace SelfishNet
 
         public void SetOnDeviceAdded(OnDeviceEvent callback)
         {
-            _onDeviceAdded = callback;
+            _onDeviceAdded += callback;
         }
 
         public void SetOnDeviceRemoved(OnDeviceEvent callback)
         {
-            _onDeviceRemoved = callback;
+            _onDeviceRemoved += callback;
         }
 
         public void SetIdentifierService(IDeviceIdentifierService service)

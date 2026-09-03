@@ -16,20 +16,22 @@
         <Border Grid.Row="1" BorderBrush="#444" BorderThickness="1" Background="#252526">
             <Grid RowDefinitions="Auto, *">
             
-                <Grid Grid.Row="0" ColumnDefinitions="1.2*, 1.5*, 2*, 1.5*, 0.6*, 0.6*" Background="#333" Height="30">
+                <Grid Grid.Row="0" ColumnDefinitions="1.2*, 1.5*, 1.8*, 1.1*, 1.1*, 0.6*, 0.6*" Background="#333" Height="30">
                     <TextBlock Text="IP Address" Grid.Column="0" VerticalAlignment="Center" Margin="10,0" Foreground="#AAA" FontWeight="Bold"/>
                     <TextBlock Text="MAC Address" Grid.Column="1" VerticalAlignment="Center" Margin="10,0" Foreground="#AAA" FontWeight="Bold"/>
                     <TextBlock Text="Device" Grid.Column="2" VerticalAlignment="Center" Margin="10,0" Foreground="#AAA" FontWeight="Bold"/>
                     <TextBlock Text="Traffic" Grid.Column="3" VerticalAlignment="Center" Margin="10,0" Foreground="#AAA" FontWeight="Bold"
                                ToolTip.Tip="Traffic monitoring requires ARP Spoof active with Redirect ✓"/>
-                    <TextBlock Text="Spoof" Grid.Column="4" VerticalAlignment="Center" HorizontalAlignment="Center" Foreground="#AAA" FontWeight="Bold"/>
-                    <TextBlock Text="Block" Grid.Column="5" VerticalAlignment="Center" HorizontalAlignment="Center" Foreground="#AAA" FontWeight="Bold"/>
+                    <TextBlock Text="Cap (KB/s)" Grid.Column="4" VerticalAlignment="Center" HorizontalAlignment="Center" Foreground="#AAA" FontWeight="Bold"
+                               ToolTip.Tip="Allowed bandwidth limit in KB/s (0 = Unlimited). Enabled when Spoof is checked."/>
+                    <TextBlock Text="Spoof" Grid.Column="5" VerticalAlignment="Center" HorizontalAlignment="Center" Foreground="#AAA" FontWeight="Bold"/>
+                    <TextBlock Text="Block" Grid.Column="6" VerticalAlignment="Center" HorizontalAlignment="Center" Foreground="#AAA" FontWeight="Bold"/>
                 </Grid>
 
                 <ListBox Grid.Row="1" Name="PcListBox" Background="Transparent">
                     <ListBox.ItemTemplate>
                     <DataTemplate>
-                            <Grid ColumnDefinitions="1.2*, 1.5*, 2*, 1.5*, 0.6*, 0.6*">
+                            <Grid ColumnDefinitions="1.2*, 1.5*, 1.8*, 1.1*, 1.1*, 0.6*, 0.6*">
                                 <TextBlock Grid.Column="0" Text="{Binding IpDisplay}" VerticalAlignment="Center" Foreground="White"/>
                         
                                 <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="5">
@@ -42,9 +44,21 @@
 
                                 <TextBlock Grid.Column="3" Text="{Binding DownloadSpeed}" VerticalAlignment="Center" Foreground="#81C784" FontSize="11"/>
 
-                                <CheckBox Grid.Column="4" IsChecked="{Binding Redirect}" IsEnabled="{Binding CanControl}" HorizontalAlignment="Center"/>
+                                <NumericUpDown Grid.Column="4" 
+                                               Value="{Binding BandwidthLimitKb}" 
+                                               IsEnabled="{Binding IsThrottlingEnabled}"
+                                               Minimum="0" Maximum="1048576" Increment="64"
+                                               FormatString="0"
+                                               Height="26"
+                                               FontSize="11"
+                                               Padding="4,2"
+                                               VerticalAlignment="Center" 
+                                               HorizontalAlignment="Center" 
+                                               ToolTip.Tip="Allowed bandwidth in KB/s. 0 = Unlimited."/>
+
+                                <CheckBox Grid.Column="5" IsChecked="{Binding Redirect}" IsEnabled="{Binding CanControl}" HorizontalAlignment="Center"/>
                         
-                                <CheckBox Grid.Column="5" IsChecked="{Binding Block}" IsEnabled="{Binding CanControl}" HorizontalAlignment="Center"/>
+                                <CheckBox Grid.Column="6" IsChecked="{Binding Block}" IsEnabled="{Binding CanControl}" HorizontalAlignment="Center"/>
                             </Grid>
                         </DataTemplate>
                     </ListBox.ItemTemplate>

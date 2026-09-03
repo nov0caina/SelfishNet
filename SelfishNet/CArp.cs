@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Net;
 using System.Net.NetworkInformation;
 using System.Threading;
+using SelfishNet.Throttling;
 using SharpPcap;
 using SharpPcap.LibPcap;
 
@@ -17,6 +18,9 @@ namespace SelfishNet
 
         private readonly object _pcapSendLock = new();
         private readonly HashSet<IPAddress> _activeSpoofedIps = new();
+        private IBandwidthThrottler _bandwidthThrottler;
+
+        public IBandwidthThrottler BandwidthThrottler => _bandwidthThrottler;
 
         private PcList _pcList;
         private LibPcapLiveDevice _device;
@@ -111,6 +115,58 @@ namespace SelfishNet
                     Vendor = OuiDatabase.Lookup(LocalMac) ?? "Local Host"
                 };
                 _pcList.AddDevice(localPc);
+            }
+
+            // Initialize cross-platform bandwidth throttler
+            try
+            {
+                string ifaceName = _device.Interface?.Name ?? string.Empty;
+                _bandwidthThrottler = BandwidthThrottlerFactory.Create(ifaceName);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[THROTTLE INIT ERROR] {ex.Message}");
+            }
+
+            // Observe per-device bandwidth limit and redirect updates
+            _pcList.SetOnDeviceAdded(OnDeviceAddedForThrottling);
+        }
+
+        private void OnDeviceAddedForThrottling(PC pc)
+        {
+            if (pc == null) return;
+            pc.PropertyChanged += (s, e) =>
+            {
+                if (e.PropertyName == nameof(PC.BandwidthLimitKb) ||
+                    e.PropertyName == nameof(PC.Redirect) ||
+                    e.PropertyName == nameof(PC.Block))
+                {
+                    if (s is PC target)
+                    {
+                        UpdateDeviceBandwidthLimit(target);
+                    }
+                }
+            };
+        }
+
+        public void UpdateDeviceBandwidthLimit(PC target)
+        {
+            if (_bandwidthThrottler == null || target == null || target.Ip == null) return;
+
+            if (_isSpoofing && target.Redirect && target.CanControl)
+            {
+                if (target.BandwidthLimitKb > 0)
+                {
+                    _bandwidthThrottler.SetLimit(target.Ip, target.BandwidthLimitKb);
+                }
+                else
+                {
+                    _bandwidthThrottler.RemoveLimit(target.Ip);
+                }
+            }
+            else
+            {
+                _bandwidthThrottler.RemoveLimit(target.Ip);
             }
         }
 
@@ -321,6 +377,7 @@ namespace SelfishNet
                 _isSpoofing = false;
                 _spoofingThread?.Join(TimeSpan.FromSeconds(5));
                 _spoofingThread = null;
+                _bandwidthThrottler?.ResetAll();
                 Console.WriteLine(">>> ARP SPOOF STOPPED <<<");
             }
         }
@@ -347,6 +404,8 @@ namespace SelfishNet
                         if (target.Block)
                         {
                             currentSpoofedThisCycle.Add(target.Ip);
+                            _bandwidthThrottler?.RemoveLimit(target.Ip);
+
                             // BLOCK: Tell the device the gateway is at a dead MAC
                             SendArpReply(target.Mac.GetAddressBytes(), target.Ip.GetAddressBytes(),
                                         deadMac, RouterIp);
@@ -357,6 +416,16 @@ namespace SelfishNet
                         else if (target.Redirect)
                         {
                             currentSpoofedThisCycle.Add(target.Ip);
+
+                            if (target.BandwidthLimitKb > 0)
+                            {
+                                _bandwidthThrottler?.SetLimit(target.Ip, target.BandwidthLimitKb);
+                            }
+                            else
+                            {
+                                _bandwidthThrottler?.RemoveLimit(target.Ip);
+                            }
+
                             // REDIRECT: Route traffic through us (MITM)
                             SendArpReply(target.Mac.GetAddressBytes(), target.Ip.GetAddressBytes(),
                                         LocalMac, RouterIp);
@@ -372,6 +441,7 @@ namespace SelfishNet
                         {
                             if (!currentSpoofedThisCycle.Contains(prevIp))
                             {
+                                _bandwidthThrottler?.RemoveLimit(prevIp);
                                 PC unpoisonTarget = _pcList.GetDeviceByIp(prevIp);
                                 if (unpoisonTarget != null)
                                 {
@@ -449,7 +519,9 @@ namespace SelfishNet
             {
                 _activeSpoofedIps.Clear();
             }
-            Console.WriteLine("[INFO] ARP tables restored.");
+
+            _bandwidthThrottler?.ResetAll();
+            Console.WriteLine("[INFO] ARP tables and bandwidth limits restored.");
         }
 
         // ──────────────────────────────────────────────
@@ -703,6 +775,16 @@ namespace SelfishNet
 
             try { if (_trafficDevice != null && _trafficDevice.Opened) _trafficDevice.Close(); } catch { }
             _trafficDevice = null;
+
+            try
+            {
+                _bandwidthThrottler?.Dispose();
+                _bandwidthThrottler = null;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[DISPOSE] Error disposing throttler: {ex.Message}");
+            }
 
             try
             {
