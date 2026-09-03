@@ -5,6 +5,7 @@ using SharpPcap.LibPcap;
 using System;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace SelfishNet
 {
@@ -21,6 +22,8 @@ namespace SelfishNet
 
             var listBox = this.FindControl<ListBox>("PcListBox");
             listBox.ItemsSource = DetectedPCs;
+
+            AppDomain.CurrentDomain.ProcessExit += (s, e) => Cleanup();
 
             LoadInterfaces();
         }
@@ -54,7 +57,7 @@ namespace SelfishNet
             }
         }
 
-        public void OnScanClick(object sender, RoutedEventArgs e)
+        public async void OnScanClick(object sender, RoutedEventArgs e)
         {
             var combo = this.FindControl<ComboBox>("NetInterfacesBox");
             var device = combo.SelectedItem as LibPcapLiveDevice;
@@ -64,30 +67,51 @@ namespace SelfishNet
                 return;
             }
 
-            // If engine exists, stop previous operations and release resources
-            if (_engine != null)
-            {
-                SetStatus("Stopping previous scan...", "#FF9800");
-                _identifierService?.StopMdnsListener();
-                _identifierService?.Dispose();
-                _identifierService = null;
-                _engine.StopArpListener();
-                _engine.StopDiscovery();
-                _engine.StopSpoofing();
-                _engine.StopTrafficMonitor();
-                _engine.Dispose();
-                _engine = null;
+            var btnScan = this.FindControl<Button>("BtnScan");
+            var btnSpoof = this.FindControl<Button>("BtnSpoof");
+            if (btnScan != null) btnScan.IsEnabled = false;
+            if (btnSpoof != null) btnSpoof.IsEnabled = false;
 
-                // Reset spoof button to initial state
-                var btn = this.FindControl<Button>("BtnSpoof");
-                btn.Content = "⚡ START ARP SPOOF";
-                btn.Background = Avalonia.Media.SolidColorBrush.Parse("#CA3E47");
+            // If engine exists, stop previous operations asynchronously
+            if (_engine != null || _identifierService != null)
+            {
+                SetStatus("Stopping previous scan and releasing network resources...", "#FF9800");
+                var oldEngine = _engine;
+                var oldIdService = _identifierService;
+                _engine = null;
+                _identifierService = null;
+
+                await Task.Run(() =>
+                {
+                    try
+                    {
+                        oldIdService?.StopMdnsListener();
+                        oldIdService?.Dispose();
+                        oldEngine?.StopArpListener();
+                        oldEngine?.StopDiscovery();
+                        oldEngine?.StopSpoofing();
+                        oldEngine?.StopTrafficMonitor();
+                        oldEngine?.Dispose();
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"[CLEANUP ERROR] {ex.Message}");
+                    }
+                });
+
+                if (btnSpoof != null)
+                {
+                    btnSpoof.Content = "⚡ START ARP SPOOF";
+                    btnSpoof.Background = Avalonia.Media.SolidColorBrush.Parse("#CA3E47");
+                }
             }
 
             DetectedPCs.Clear();
 
             try
             {
+                SetStatus("Initializing network scan...", "#29B6F6");
+
                 var deviceList = new PcList();
                 deviceList.SetOnDeviceAdded((newPc) =>
                 {
@@ -98,31 +122,43 @@ namespace SelfishNet
                     });
                 });
 
-                _engine = new CArp(device, deviceList);
+                CArp newEngine = null;
+                IDeviceIdentifierService newIdService = null;
 
-                // Initialize device identifier service (OUI + DNS + mDNS + heuristics)
-                _identifierService = new DeviceIdentifierService(device, deviceList);
-                deviceList.SetIdentifierService(_identifierService);
+                await Task.Run(() =>
+                {
+                    newEngine = new CArp(device, deviceList);
+                    newIdService = new DeviceIdentifierService(device, deviceList);
+                    deviceList.SetIdentifierService(newIdService);
+
+                    newEngine.StartArpListener();
+                    newEngine.StartArpDiscovery();
+                    newEngine.StartTrafficMonitor();
+                    newIdService.StartMdnsListener();
+                });
+
+                _engine = newEngine;
+                _identifierService = newIdService;
 
                 // Show detected network info
                 string localIp = _engine.LocalIp != null ? new System.Net.IPAddress(_engine.LocalIp).ToString() : "N/A";
                 string routerIp = _engine.RouterIp != null ? new System.Net.IPAddress(_engine.RouterIp).ToString() : "N/A";
                 string subnet = _engine.SubnetMask != null ? new System.Net.IPAddress(_engine.SubnetMask).ToString() : "/24 (fallback)";
                 SetStatus($"Scanning... Local: {localIp} | Gateway: {routerIp} | Mask: {subnet}", "#29B6F6");
-
-                _engine.StartArpListener();
-                _engine.StartArpDiscovery();
-                _engine.StartTrafficMonitor();
-                _identifierService.StartMdnsListener();
             }
             catch (Exception ex)
             {
                 SetStatus($"❌ Error starting scan: {ex.Message}", "#F44336");
                 Console.WriteLine($"[SCAN ERROR] {ex}");
             }
+            finally
+            {
+                if (btnScan != null) btnScan.IsEnabled = true;
+                if (btnSpoof != null) btnSpoof.IsEnabled = true;
+            }
         }
 
-        public void OnSpoofClick(object sender, RoutedEventArgs e)
+        public async void OnSpoofClick(object sender, RoutedEventArgs e)
         {
             if (_engine == null)
             {
@@ -131,24 +167,36 @@ namespace SelfishNet
             }
 
             var btn = this.FindControl<Button>("BtnSpoof");
-            if (btn.Content.ToString().Contains("START"))
+            if (btn == null) return;
+            btn.IsEnabled = false;
+
+            try
             {
-                if (_engine.RouterMac == null)
+                if (btn.Content.ToString().Contains("START"))
                 {
-                    SetStatus("❌ Router MAC not detected. Scan again.", "#F44336");
-                    return;
+                    if (_engine.RouterMac == null)
+                    {
+                        SetStatus("❌ Router MAC not detected. Scan again.", "#F44336");
+                        return;
+                    }
+
+                    await Task.Run(() => _engine.StartSpoofing());
+                    btn.Content = "⛔ STOP SPOOF";
+                    btn.Background = Avalonia.Media.SolidColorBrush.Parse("#444");
+                    SetStatus("⚡ ARP Spoof active — intercepting traffic.", "#F44336");
                 }
-                _engine.StartSpoofing();
-                btn.Content = "⛔ STOP SPOOF";
-                btn.Background = Avalonia.Media.SolidColorBrush.Parse("#444");
-                SetStatus("⚡ ARP Spoof active — intercepting traffic.", "#F44336");
+                else
+                {
+                    SetStatus("Stopping spoof and restoring network tables...", "#FF9800");
+                    await Task.Run(() => _engine.StopSpoofing());
+                    btn.Content = "⚡ START ARP SPOOF";
+                    btn.Background = Avalonia.Media.SolidColorBrush.Parse("#CA3E47");
+                    SetStatus("Spoof stopped. Network restored.", "#8BC34A");
+                }
             }
-            else
+            finally
             {
-                _engine.StopSpoofing();
-                btn.Content = "⚡ START ARP SPOOF";
-                btn.Background = Avalonia.Media.SolidColorBrush.Parse("#CA3E47");
-                SetStatus("Spoof stopped. Network restored.", "#8BC34A");
+                btn.IsEnabled = true;
             }
         }
 
@@ -161,8 +209,11 @@ namespace SelfishNet
             if (Dispatcher.UIThread.CheckAccess())
             {
                 var status = this.FindControl<TextBlock>("StatusText");
-                status.Text = message;
-                status.Foreground = Avalonia.Media.SolidColorBrush.Parse(hexColor);
+                if (status != null)
+                {
+                    status.Text = message;
+                    status.Foreground = Avalonia.Media.SolidColorBrush.Parse(hexColor);
+                }
             }
             else
             {
@@ -170,13 +221,22 @@ namespace SelfishNet
             }
         }
 
+        private void Cleanup()
+        {
+            try
+            {
+                _identifierService?.StopMdnsListener();
+                _identifierService?.Dispose();
+                _identifierService = null;
+                _engine?.Dispose();
+                _engine = null;
+            }
+            catch { }
+        }
+
         protected override void OnClosed(EventArgs e)
         {
-            _identifierService?.StopMdnsListener();
-            _identifierService?.Dispose();
-            _identifierService = null;
-            _engine?.Dispose();
-            _engine = null;
+            Cleanup();
             base.OnClosed(e);
         }
     }
