@@ -58,3 +58,7 @@ temp/
 .env
 .analisis.md
 .analisis.pdf
+
+## --- Agentes y OpenSpec (Solo Local) ---
+.agents/
+openspec/
