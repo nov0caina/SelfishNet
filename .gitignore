@@ -59,6 +59,32 @@ temp/
 .analisis.md
 .analisis.pdf
 
-## --- Agentes y OpenSpec (Solo Local) ---
+## --- Python Cache & Bytecode ---
+__pycache__/
+*.py[cod]
+*$py.class
+
+## --- Agentes, Skills, OpenSpec y Kit de Diseño (Solo Local) ---
 .agents/
+.agent/
+_agents/
+_agent/
+.claude/
+.gemini/
+.cursor/
+.windsurf/
 openspec/
+AGENTS.md
+CLAUDE.md
+GEMINI.md
+accessibility/
+components/
+content/
+design-systems/
+frameworks/
+scripts/
+taste/
+tokens/
+workflows/
+evals/
+templates/
