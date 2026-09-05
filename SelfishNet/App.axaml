@@ -39,22 +39,23 @@
         <!-- Fonts -->
         <FontFamily x:Key="MonospaceFontFamily">Cascadia Code, Consolas, Menlo, Monaco, DejaVu Sans Mono, Liberation Mono, monospace</FontFamily>
 
-        <!-- ── Vector PathIcon Geometries (Lucide-Style) ── -->
-        <StreamGeometry x:Key="IconSearch">M 21 21 L 16.65 16.65 M 19 11 C 19 15.4183 15.4183 19 11 19 C 6.58172 19 3 15.4183 3 11 C 3 6.58172 6.58172 3 11 3 C 15.4183 3 19 6.58172 19 11 Z</StreamGeometry>
-        <StreamGeometry x:Key="IconZap">M 13 2 L 3 14 L 12 14 L 11 22 L 21 10 L 12 10 L 13 2 Z</StreamGeometry>
-        <StreamGeometry x:Key="IconShield">M 12 22 C 12 22 20 18 20 12 V 5 L 12 2 L 4 5 V 12 C 4 18 12 22 12 22 Z</StreamGeometry>
-        <StreamGeometry x:Key="IconShieldOff">M 1 1 L 23 23 M 12 2 L 4 5 V 12 C 4 15.5 6.5 19 10 21.5 M 12 2 L 20 5 V 12 C 20 13.5 19.5 15 18.5 16.5</StreamGeometry>
+        <!-- ── Vector PathIcon Geometries (Filled High-Precision Outlines) ── -->
+        <StreamGeometry x:Key="IconSearch">M 10 2 C 5.58 2 2 5.58 2 10 C 2 14.42 5.58 18 10 18 C 11.85 18 13.55 17.37 14.91 16.32 L 19.29 20.71 C 19.68 21.1 20.32 21.1 20.71 20.71 C 21.1 20.32 21.1 19.68 20.71 19.29 L 16.32 14.91 C 17.37 13.55 18 11.85 18 10 C 18 5.58 14.42 2 10 2 Z M 10 4 C 13.31 4 16 6.69 16 10 C 16 13.31 13.31 16 10 16 C 6.69 16 4 13.31 4 10 C 4 6.69 6.69 4 10 4 Z</StreamGeometry>
+        <StreamGeometry x:Key="IconZap">M 13 2 L 3 14 H 12 L 11 22 L 21 10 H 12 L 13 2 Z</StreamGeometry>
+        <StreamGeometry x:Key="IconShield">M 12 1 L 3 5 V 11 C 3 16.55 6.84 21.74 12 23 C 17.16 21.74 21 16.55 21 11 V 5 L 12 1 Z M 12 3.18 L 19 6.3 V 11 C 19 15.52 16.02 19.69 12 20.91 C 7.98 19.69 5 15.52 5 11 V 6.3 L 12 3.18 Z</StreamGeometry>
+        <StreamGeometry x:Key="IconShieldOff">M 12 1 L 3 5 V 11 C 3 16.55 6.84 21.74 12 23 C 17.16 21.74 21 16.55 21 11 V 5 L 12 1 Z M 12 3.18 L 19 6.3 V 11 C 19 15.52 16.02 19.69 12 20.91 C 7.98 19.69 5 15.52 5 11 V 6.3 L 12 3.18 Z</StreamGeometry>
         <StreamGeometry x:Key="IconActivity">M 22 12 H 18 L 15 21 L 9 3 L 6 12 H 2</StreamGeometry>
-        <StreamGeometry x:Key="IconMonitor">M 20 3 H 4 C 2.9 3 2 3.9 2 5 V 15 C 2 16.1 2.9 17 4 17 H 20 C 21.1 17 22 16.1 22 15 V 5 C 22 3.9 21.1 3 20 3 Z M 12 17 V 21 M 8 21 H 16</StreamGeometry>
-        <StreamGeometry x:Key="IconSmartphone">M 17 2 H 7 C 5.9 2 5 2.9 5 4 V 20 C 5 21.1 5.9 22 7 22 H 17 C 18.1 22 19 21.1 19 20 V 4 C 19 2.9 18.1 2 17 2 Z M 12 18 H 12.01</StreamGeometry>
-        <StreamGeometry x:Key="IconWifi">M 5 12.55 C 8.87 8.67 15.13 8.67 19 12.55 M 1.42 9 C 7.26 3.16 16.74 3.16 22.58 9 M 8.53 16.11 C 10.45 14.19 13.55 14.19 15.47 16.11 M 12 20 H 12.01</StreamGeometry>
+        <StreamGeometry x:Key="IconMonitor">M 3 3 C 1.9 3 1 3.9 1 5 V 15 C 1 16.1 1.9 17 3 17 H 10 V 19 H 7 C 6.45 19 6 19.45 6 20 C 6 20.55 6.45 21 7 21 H 17 C 17.55 21 18 20.55 18 20 C 18 19.45 17.55 19 17 19 H 14 V 17 H 21 C 22.1 17 23 16.1 23 15 V 5 C 23 3.9 22.1 3 21 3 H 3 Z M 3 5 H 21 V 15 H 3 V 5 Z</StreamGeometry>
+        <StreamGeometry x:Key="IconSmartphone">M 17 1.01 L 7 1 C 5.9 1 5 1.9 5 3 V 21 C 5 22.1 5.9 23 7 23 H 17 C 18.1 23 19 22.1 19 21 V 3 C 19 1.9 18.1 1.01 17 1.01 Z M 17 19 H 7 V 5 H 17 V 19 Z</StreamGeometry>
+        <StreamGeometry x:Key="IconWifi">M 12 18 C 10.9 18 10 18.9 10 20 C 10 21.1 10.9 22 12 22 C 13.1 22 14 21.1 14 20 C 14 18.9 13.1 18 12 18 Z M 6.34 13.66 L 7.76 15.07 C 10.1 12.73 13.9 12.73 16.24 15.07 L 17.66 13.66 C 14.54 10.53 9.46 10.53 6.34 13.66 Z M 2.1 9.41 L 3.51 10.83 C 8.2 6.14 15.8 6.14 20.49 10.83 L 21.9 9.41 C 16.44 3.94 7.56 3.94 2.1 9.41 Z</StreamGeometry>
         <StreamGeometry x:Key="IconCpu">M 4 4 H 20 V 20 H 4 Z M 9 9 H 15 V 15 H 9 Z M 9 1 V 4 M 15 1 V 4 M 9 20 V 23 M 15 20 V 23 M 20 9 H 23 M 20 15 H 23 M 1 9 H 4 M 1 15 H 4</StreamGeometry>
         <StreamGeometry x:Key="IconArrowDown">M 12 5 V 19 M 19 12 L 12 19 L 5 12</StreamGeometry>
         <StreamGeometry x:Key="IconArrowUp">M 12 19 V 5 M 5 12 L 12 5 L 19 12</StreamGeometry>
         <StreamGeometry x:Key="IconLayers">M 12 2 L 2 7 L 12 12 L 22 7 L 12 2 Z M 2 17 L 12 22 L 22 17 M 2 12 L 12 17 L 22 12</StreamGeometry>
-        <StreamGeometry x:Key="IconBan">M 12 22 C 17.52 22 22 17.52 22 12 C 22 6.48 17.52 2 12 2 C 6.48 2 2 6.48 2 12 C 2 17.52 6.48 22 12 22 Z M 4.93 4.93 L 19.07 19.07</StreamGeometry>
-        <StreamGeometry x:Key="IconStopCircle">M 12 22 C 17.52 22 22 17.52 22 12 C 22 6.48 17.52 2 12 2 C 6.48 2 2 6.48 2 12 C 2 17.52 6.48 22 12 22 Z M 9 9 H 15 V 15 H 9 Z</StreamGeometry>
-        <StreamGeometry x:Key="IconNetwork">M 16 16 L 12 12 M 12 12 L 8 16 M 12 12 V 3 M 20 21 A 4 4 0 1 1 12 21 A 4 4 0 0 1 4 21</StreamGeometry>
+        <StreamGeometry x:Key="IconBan">M 12 2 C 6.48 2 2 6.48 2 12 C 2 17.52 6.48 22 12 22 C 17.52 22 22 17.52 22 12 C 22 6.48 17.52 2 12 2 Z M 4 12 C 4 7.58 7.58 4 12 4 C 13.85 4 15.55 4.63 16.91 5.68 L 5.68 16.91 C 4.63 15.55 4 13.85 4 12 Z M 12 20 C 10.15 20 8.45 19.37 7.09 18.32 L 18.32 7.09 C 19.37 8.45 20 10.15 20 12 C 20 16.42 16.42 20 12 20 Z</StreamGeometry>
+        <StreamGeometry x:Key="IconStopCircle">M 12 2 C 6.48 2 2 6.48 2 12 C 2 17.52 6.48 22 12 22 C 17.52 22 22 17.52 22 12 C 22 6.48 17.52 2 12 2 Z M 9 9 H 15 V 15 H 9 Z</StreamGeometry>
+        <StreamGeometry x:Key="IconNetwork">M 12 2 L 15 8 H 13 V 14 H 17 V 16 H 20 C 21.1 16 22 16.9 22 18 V 21 C 22 21.6 21.6 22 21 22 H 17 C 16.4 22 16 21.6 16 21 V 18 C 16 16.9 16.9 16 18 16 H 13 V 14 H 11 V 16 H 6 C 7.1 16 8 16.9 8 18 V 21 C 8 21.6 7.6 22 7 22 H 3 C 2.4 22 2 21.6 2 21 V 18 C 2 16.9 2.9 16 4 16 H 7 V 14 H 11 V 8 H 9 L 12 2 Z</StreamGeometry>
+        <StreamGeometry x:Key="IconRadar">M 12 2 C 6.48 2 2 6.48 2 12 C 2 17.52 6.48 22 12 22 C 17.52 22 22 17.52 22 12 C 22 6.48 17.52 2 12 2 Z M 12 4 C 16.42 4 20 7.58 20 12 C 20 16.42 16.42 20 12 20 C 7.58 20 4 16.42 4 12 C 4 7.58 7.58 4 12 4 Z M 12 7 C 9.24 7 7 9.24 7 12 C 7 14.76 9.24 17 12 17 C 14.76 17 17 14.76 17 12 C 17 9.24 14.76 7 12 7 Z M 12 9 C 13.66 9 15 10.34 15 12 C 15 13.66 13.66 15 12 15 C 10.34 15 9 13.66 9 12 C 9 10.34 10.34 9 12 9 Z</StreamGeometry>
     </Application.Resources>
 
     <Application.Styles>

@@ -26,8 +26,20 @@ namespace SelfishNet
         public int TotalDevicesCount
         {
             get => _totalDevicesCount;
-            set { if (_totalDevicesCount != value) { _totalDevicesCount = value; OnPropertyChanged(); } }
+            set
+            {
+                if (_totalDevicesCount != value)
+                {
+                    _totalDevicesCount = value;
+                    OnPropertyChanged();
+                    OnPropertyChanged(nameof(HasNoDevices));
+                    OnPropertyChanged(nameof(HasDevices));
+                }
+            }
         }
+
+        public bool HasNoDevices => _totalDevicesCount == 0;
+        public bool HasDevices => _totalDevicesCount > 0;
 
         private int _spoofedCount = 0;
         public int SpoofedCount

@@ -2,6 +2,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         x:Class="SelfishNet.MainWindow"
         Title="SelfishNet — Network Traffic Management"
+        Icon="/Assets/app_icon.ico"
         Width="980" Height="620"
         MinWidth="860" MinHeight="540"
         Background="{StaticResource AppBackgroundBrush}">
@@ -15,10 +16,8 @@
             <Grid ColumnDefinitions="Auto, *, Auto, Auto, Auto">
                 <!-- Branding -->
                 <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
-                    <Border Width="32" Height="32" CornerRadius="6" Background="{StaticResource AccentCyanBgBrush}"
-                            BorderBrush="{StaticResource AccentCyanBrush}" BorderThickness="1">
-                        <PathIcon Data="{StaticResource IconZap}" Width="16" Height="16"
-                                  Foreground="{StaticResource AccentCyanBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    <Border Width="34" Height="34" CornerRadius="8" ClipToBounds="True" Background="Transparent" VerticalAlignment="Center">
+                        <Image Source="/Assets/app_icon.png" Width="34" Height="34" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                     </Border>
                     <StackPanel VerticalAlignment="Center">
                         <StackPanel Orientation="Horizontal" Spacing="6">
@@ -139,8 +138,33 @@
 
                 <Rectangle Grid.Row="1" Fill="{StaticResource BorderDefaultBrush}" Height="1"/>
 
-                <!-- Device Items List with Row Dividers -->
-                <ListBox Grid.Row="2" Name="PcListBox" Background="Transparent" Margin="0,2,0,2">
+                <!-- Main Content Area: Empty State / Device List -->
+                <Grid Grid.Row="2">
+                    <!-- Empty State (Shown when no devices are discovered yet) -->
+                    <StackPanel Name="EmptyStatePanel"
+                                HorizontalAlignment="Center" VerticalAlignment="Center"
+                                Spacing="10" Margin="0,50"
+                                IsVisible="{Binding HasNoDevices}">
+                        <Border Width="56" Height="56" CornerRadius="12"
+                                Background="{StaticResource CardBackgroundElevatedBrush}"
+                                BorderBrush="{StaticResource BorderDefaultBrush}" BorderThickness="1"
+                                HorizontalAlignment="Center">
+                            <PathIcon Data="{StaticResource IconRadar}" Width="26" Height="26"
+                                      Foreground="{StaticResource AccentPrimaryBrush}"
+                                      HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <TextBlock Text="No hay dispositivos detectados"
+                                   FontSize="15" FontWeight="SemiBold"
+                                   Foreground="{StaticResource TextPrimaryBrush}"
+                                   HorizontalAlignment="Center"/>
+                        <TextBlock Text="Selecciona una interfaz de red arriba y haz clic en 'Escanear Red' para comenzar el descubrimiento ARP."
+                                   FontSize="12" Foreground="{StaticResource TextSecondaryBrush}"
+                                   HorizontalAlignment="Center" TextAlignment="Center" MaxWidth="440"/>
+                    </StackPanel>
+
+                    <!-- Device Items List with Row Dividers -->
+                    <ListBox Name="PcListBox" Background="Transparent" Margin="0,2,0,2"
+                             IsVisible="{Binding HasDevices}">
                     <ListBox.ItemTemplate>
                         <DataTemplate>
                             <Border BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="0,0,0,1" Padding="0,3">
@@ -222,6 +246,7 @@
                         </DataTemplate>
                     </ListBox.ItemTemplate>
                 </ListBox>
+                </Grid>
             </Grid>
         </Border>
 
