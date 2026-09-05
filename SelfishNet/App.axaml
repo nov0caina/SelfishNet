@@ -1,10 +1,167 @@
 <Application xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="SelfishNet.App"
-             RequestedThemeVariant="Default">
-             <!-- "Default" ThemeVariant follows system theme variant. "Dark" or "Light" are other available options. -->
+             RequestedThemeVariant="Dark">
+
+    <Application.Resources>
+        <!-- ── Dark-Tech Theme Color Brushes ── -->
+        <SolidColorBrush x:Key="AppBackgroundBrush" Color="#0D1117"/>
+        <SolidColorBrush x:Key="CardBackgroundBrush" Color="#161B22"/>
+        <SolidColorBrush x:Key="CardBackgroundElevatedBrush" Color="#21262D"/>
+        <SolidColorBrush x:Key="HeaderBackgroundBrush" Color="#12161D"/>
+        <SolidColorBrush x:Key="BorderDefaultBrush" Color="#30363D"/>
+        <SolidColorBrush x:Key="BorderSubtleBrush" Color="#21262D"/>
+
+        <!-- Text Brushes -->
+        <SolidColorBrush x:Key="TextPrimaryBrush" Color="#F0F6FC"/>
+        <SolidColorBrush x:Key="TextSecondaryBrush" Color="#8B949E"/>
+        <SolidColorBrush x:Key="TextMutedBrush" Color="#6E7681"/>
+
+        <!-- Accent Brushes -->
+        <SolidColorBrush x:Key="AccentPrimaryBrush" Color="#2F81F7"/>
+        <SolidColorBrush x:Key="AccentPrimaryHoverBrush" Color="#388BFD"/>
+        <SolidColorBrush x:Key="AccentPrimaryPressedBrush" Color="#1F6FEB"/>
+
+        <SolidColorBrush x:Key="AccentDangerBrush" Color="#F85149"/>
+        <SolidColorBrush x:Key="AccentDangerHoverBrush" Color="#DA3633"/>
+        <SolidColorBrush x:Key="AccentDangerPressedBrush" Color="#B62324"/>
+        <SolidColorBrush x:Key="AccentDangerBgBrush" Color="#261214"/>
+
+        <SolidColorBrush x:Key="AccentSuccessBrush" Color="#3FB950"/>
+        <SolidColorBrush x:Key="AccentSuccessBgBrush" Color="#122616"/>
+
+        <SolidColorBrush x:Key="AccentWarningBrush" Color="#D29922"/>
+        <SolidColorBrush x:Key="AccentWarningBgBrush" Color="#271E0B"/>
+
+        <SolidColorBrush x:Key="AccentCyanBrush" Color="#58A6FF"/>
+        <SolidColorBrush x:Key="AccentCyanBgBrush" Color="#0D2744"/>
+
+        <!-- Fonts -->
+        <FontFamily x:Key="MonospaceFontFamily">Cascadia Code, Consolas, Menlo, Monaco, DejaVu Sans Mono, Liberation Mono, monospace</FontFamily>
+
+        <!-- ── Vector PathIcon Geometries (Lucide-Style) ── -->
+        <StreamGeometry x:Key="IconSearch">M 21 21 L 16.65 16.65 M 19 11 C 19 15.4183 15.4183 19 11 19 C 6.58172 19 3 15.4183 3 11 C 3 6.58172 6.58172 3 11 3 C 15.4183 3 19 6.58172 19 11 Z</StreamGeometry>
+        <StreamGeometry x:Key="IconZap">M 13 2 L 3 14 L 12 14 L 11 22 L 21 10 L 12 10 L 13 2 Z</StreamGeometry>
+        <StreamGeometry x:Key="IconShield">M 12 22 C 12 22 20 18 20 12 V 5 L 12 2 L 4 5 V 12 C 4 18 12 22 12 22 Z</StreamGeometry>
+        <StreamGeometry x:Key="IconShieldOff">M 1 1 L 23 23 M 12 2 L 4 5 V 12 C 4 15.5 6.5 19 10 21.5 M 12 2 L 20 5 V 12 C 20 13.5 19.5 15 18.5 16.5</StreamGeometry>
+        <StreamGeometry x:Key="IconActivity">M 22 12 H 18 L 15 21 L 9 3 L 6 12 H 2</StreamGeometry>
+        <StreamGeometry x:Key="IconMonitor">M 20 3 H 4 C 2.9 3 2 3.9 2 5 V 15 C 2 16.1 2.9 17 4 17 H 20 C 21.1 17 22 16.1 22 15 V 5 C 22 3.9 21.1 3 20 3 Z M 12 17 V 21 M 8 21 H 16</StreamGeometry>
+        <StreamGeometry x:Key="IconSmartphone">M 17 2 H 7 C 5.9 2 5 2.9 5 4 V 20 C 5 21.1 5.9 22 7 22 H 17 C 18.1 22 19 21.1 19 20 V 4 C 19 2.9 18.1 2 17 2 Z M 12 18 H 12.01</StreamGeometry>
+        <StreamGeometry x:Key="IconWifi">M 5 12.55 C 8.87 8.67 15.13 8.67 19 12.55 M 1.42 9 C 7.26 3.16 16.74 3.16 22.58 9 M 8.53 16.11 C 10.45 14.19 13.55 14.19 15.47 16.11 M 12 20 H 12.01</StreamGeometry>
+        <StreamGeometry x:Key="IconCpu">M 4 4 H 20 V 20 H 4 Z M 9 9 H 15 V 15 H 9 Z M 9 1 V 4 M 15 1 V 4 M 9 20 V 23 M 15 20 V 23 M 20 9 H 23 M 20 15 H 23 M 1 9 H 4 M 1 15 H 4</StreamGeometry>
+        <StreamGeometry x:Key="IconArrowDown">M 12 5 V 19 M 19 12 L 12 19 L 5 12</StreamGeometry>
+        <StreamGeometry x:Key="IconArrowUp">M 12 19 V 5 M 5 12 L 12 5 L 19 12</StreamGeometry>
+        <StreamGeometry x:Key="IconLayers">M 12 2 L 2 7 L 12 12 L 22 7 L 12 2 Z M 2 17 L 12 22 L 22 17 M 2 12 L 12 17 L 22 12</StreamGeometry>
+        <StreamGeometry x:Key="IconBan">M 12 22 C 17.52 22 22 17.52 22 12 C 22 6.48 17.52 2 12 2 C 6.48 2 2 6.48 2 12 C 2 17.52 6.48 22 12 22 Z M 4.93 4.93 L 19.07 19.07</StreamGeometry>
+        <StreamGeometry x:Key="IconStopCircle">M 12 22 C 17.52 22 22 17.52 22 12 C 22 6.48 17.52 2 12 2 C 6.48 2 2 6.48 2 12 C 2 17.52 6.48 22 12 22 Z M 9 9 H 15 V 15 H 9 Z</StreamGeometry>
+        <StreamGeometry x:Key="IconNetwork">M 16 16 L 12 12 M 12 12 L 8 16 M 12 12 V 3 M 20 21 A 4 4 0 1 1 12 21 A 4 4 0 0 1 4 21</StreamGeometry>
+    </Application.Resources>
 
     <Application.Styles>
         <FluentTheme />
+
+        <!-- ── Base Button Style ── -->
+        <Style Selector="Button">
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Padding" Value="12,7"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+
+        <!-- Primary Action Button (Scan) -->
+        <Style Selector="Button.primary">
+            <Setter Property="Background" Value="{StaticResource AccentPrimaryBrush}"/>
+            <Setter Property="Foreground" Value="#FFFFFF"/>
+            <Setter Property="BorderBrush" Value="#4C96FF"/>
+            <Setter Property="BorderThickness" Value="1"/>
+        </Style>
+        <Style Selector="Button.primary:pointerover">
+            <Setter Property="Background" Value="{StaticResource AccentPrimaryHoverBrush}"/>
+        </Style>
+        <Style Selector="Button.primary:pressed">
+            <Setter Property="Background" Value="{StaticResource AccentPrimaryPressedBrush}"/>
+        </Style>
+        <Style Selector="Button.primary:disabled">
+            <Setter Property="Opacity" Value="0.5"/>
+        </Style>
+
+        <!-- Danger/Action Button (Start Spoof) -->
+        <Style Selector="Button.danger">
+            <Setter Property="Background" Value="{StaticResource AccentDangerBrush}"/>
+            <Setter Property="Foreground" Value="#FFFFFF"/>
+            <Setter Property="BorderBrush" Value="#FF7B72"/>
+            <Setter Property="BorderThickness" Value="1"/>
+        </Style>
+        <Style Selector="Button.danger:pointerover">
+            <Setter Property="Background" Value="{StaticResource AccentDangerHoverBrush}"/>
+        </Style>
+        <Style Selector="Button.danger:pressed">
+            <Setter Property="Background" Value="{StaticResource AccentDangerPressedBrush}"/>
+        </Style>
+        <Style Selector="Button.danger:disabled">
+            <Setter Property="Opacity" Value="0.5"/>
+        </Style>
+
+        <!-- Stop Spoof Active Button -->
+        <Style Selector="Button.active-stop">
+            <Setter Property="Background" Value="{StaticResource CardBackgroundElevatedBrush}"/>
+            <Setter Property="Foreground" Value="{StaticResource AccentDangerBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource AccentDangerBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+        </Style>
+        <Style Selector="Button.active-stop:pointerover">
+            <Setter Property="Background" Value="{StaticResource AccentDangerBgBrush}"/>
+        </Style>
+
+        <!-- ComboBox Dark Styling -->
+        <Style Selector="ComboBox">
+            <Setter Property="Background" Value="{StaticResource CardBackgroundBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource BorderDefaultBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+        </Style>
+
+        <!-- NumericUpDown Dark Styling -->
+        <Style Selector="NumericUpDown">
+            <Setter Property="Background" Value="{StaticResource AppBackgroundBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource BorderDefaultBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="4"/>
+            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+        </Style>
+        <Style Selector="NumericUpDown:disabled">
+            <Setter Property="Opacity" Value="0.4"/>
+        </Style>
+
+        <!-- Custom ListBoxItem Style for Data Table -->
+        <Style Selector="ListBoxItem">
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Margin" Value="0"/>
+            <Setter Property="MinHeight" Value="38"/>
+            <Setter Property="CornerRadius" Value="0"/>
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
+        <Style Selector="ListBoxItem:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource CardBackgroundElevatedBrush}"/>
+        </Style>
+        <Style Selector="ListBoxItem:selected /template/ ContentPresenter">
+            <Setter Property="Background" Value="#1C2836"/>
+        </Style>
+        <Style Selector="ListBoxItem:selected:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#223244"/>
+        </Style>
+
+        <!-- CheckBox Styling for Spoof / Block -->
+        <Style Selector="CheckBox.spoof-check:checked /template/ Border#NormalRectangle">
+            <Setter Property="Background" Value="{StaticResource AccentPrimaryBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource AccentPrimaryBrush}"/>
+        </Style>
+        <Style Selector="CheckBox.block-check:checked /template/ Border#NormalRectangle">
+            <Setter Property="Background" Value="{StaticResource AccentDangerBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource AccentDangerBrush}"/>
+        </Style>
     </Application.Styles>
 </Application>

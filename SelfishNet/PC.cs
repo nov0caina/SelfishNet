@@ -10,13 +10,42 @@ namespace SelfishNet
     {
         // ── Display properties (XAML bindings) ──
 
-        public string IpDisplay => Ip?.ToString() ?? "...";
-        public string MacDisplay => Mac?.ToString() ?? "...";
+        public string IpDisplay => Ip?.ToString() ?? "—";
+        public string MacDisplay => Mac?.ToString() ?? "—";
+
+        /// <summary>
+        /// Formatted colon-delimited MAC address (e.g. "74:D8:3E:6E:1B:C6") for tabular readability.
+        /// </summary>
+        public string MacFormatted
+        {
+            get
+            {
+                if (Mac == null) return "—";
+                string macStr = Mac.ToString();
+                if (macStr.Length == 12)
+                {
+                    return $"{macStr[0..2]}:{macStr[2..4]}:{macStr[4..6]}:{macStr[6..8]}:{macStr[8..10]}:{macStr[10..12]}";
+                }
+                return macStr;
+            }
+        }
 
         // ── Core network properties ──
 
-        public IPAddress Ip { get; set; }
-        public PhysicalAddress Mac { get; set; }
+        private IPAddress _ip;
+        public IPAddress Ip
+        {
+            get => _ip;
+            set { if (_ip != value) { _ip = value; OnPropertyChanged(); OnPropertyChanged(nameof(IpDisplay)); } }
+        }
+
+        private PhysicalAddress _mac;
+        public PhysicalAddress Mac
+        {
+            get => _mac;
+            set { if (_mac != value) { _mac = value; OnPropertyChanged(); OnPropertyChanged(nameof(MacDisplay)); OnPropertyChanged(nameof(MacFormatted)); OnPropertyChanged(nameof(DeviceLabel)); } }
+        }
+
         public string Name { get; set; } = "Unknown";
 
         // ── Device identification ──
@@ -39,8 +68,10 @@ namespace SelfishNet
         public DeviceType DeviceCategory
         {
             get => _deviceCategory;
-            set { if (_deviceCategory != value) { _deviceCategory = value; OnPropertyChanged(); OnPropertyChanged(nameof(DeviceLabel)); } }
+            set { if (_deviceCategory != value) { _deviceCategory = value; OnPropertyChanged(); OnPropertyChanged(nameof(DeviceLabel)); OnPropertyChanged(nameof(CategoryName)); } }
         }
+
+        public string CategoryName => _deviceCategory != DeviceType.Unknown ? _deviceCategory.ToString() : "Device";
 
         /// <summary>
         /// Computed display label for UI: combines device type, vendor, and hostname.
@@ -65,14 +96,13 @@ namespace SelfishNet
                 if (Mac != null)
                 {
                     string macStr = Mac.ToString();
-                    // Format: "A23BC1D4E5F6" → "A2:3B:C1:D4:E5:F6"
                     if (macStr.Length == 12)
                     {
-                        string label = isRandomized ? "📱 " : "";
-                        return $"{label}{macStr[0..2]}:{macStr[2..4]}:{macStr[4..6]}:{macStr[6..8]}:{macStr[8..10]}:{macStr[10..12]}";
+                        string prefix = isRandomized ? "Randomized " : "";
+                        return $"{prefix}{macStr[0..2]}:{macStr[2..4]}:{macStr[4..6]}:{macStr[6..8]}:{macStr[8..10]}:{macStr[10..12]}";
                     }
                 }
-                return "Unknown";
+                return "Unknown Device";
             }
         }
 
@@ -147,6 +177,8 @@ namespace SelfishNet
                     OnPropertyChanged();
                     OnPropertyChanged(nameof(CanControl));
                     OnPropertyChanged(nameof(IsThrottlingEnabled));
+                    OnPropertyChanged(nameof(HasRoleBadge));
+                    OnPropertyChanged(nameof(RoleBadgeText));
                 }
             }
         }
@@ -163,9 +195,14 @@ namespace SelfishNet
                     OnPropertyChanged();
                     OnPropertyChanged(nameof(CanControl));
                     OnPropertyChanged(nameof(IsThrottlingEnabled));
+                    OnPropertyChanged(nameof(HasRoleBadge));
+                    OnPropertyChanged(nameof(RoleBadgeText));
                 }
             }
         }
+
+        public bool HasRoleBadge => IsLocalPc || IsGateway;
+        public string RoleBadgeText => IsLocalPc ? "YOU" : (IsGateway ? "GATEWAY" : "");
 
         public bool CanControl => !IsLocalPc && !IsGateway;
 
@@ -193,9 +230,15 @@ namespace SelfishNet
                 {
                     _downloadSpeed = value;
                     OnPropertyChanged();
+                    OnPropertyChanged(nameof(HasActiveTraffic));
+                    OnPropertyChanged(nameof(TrafficBrushHex));
                 }
             }
         }
+
+        public bool HasActiveTraffic => !string.IsNullOrEmpty(_downloadSpeed) && _downloadSpeed != "—" && !_downloadSpeed.Contains("0 KB/s");
+
+        public string TrafficBrushHex => HasActiveTraffic ? "#3FB950" : "#6E7681";
 
         // ── INotifyPropertyChanged ──
 

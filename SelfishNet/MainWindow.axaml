@@ -1,71 +1,247 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         x:Class="SelfishNet.MainWindow"
-        Title="SelfishNet by Nov0caina" Width="800" Height="500"
-        Background="#1e1e1e">
+        Title="SelfishNet — Network Traffic Management"
+        Width="980" Height="620"
+        MinWidth="860" MinHeight="540"
+        Background="{StaticResource AppBackgroundBrush}">
 
-    <Grid RowDefinitions="Auto, *, Auto" Margin="10">
-    
-        <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="10" Margin="0,0,0,10">
-            <TextBlock Text="Interfaz:" VerticalAlignment="Center" Foreground="White"/>
-            <ComboBox Name="NetInterfacesBox" Width="200"/>
-            <Button Name="BtnScan" Content="🔍 Escanear Red" Click="OnScanClick" Background="#007ACC" Foreground="White"/>
-            <Button Name="BtnSpoof" Content="⚡ START ARP SPOOF" Click="OnSpoofClick" Background="#CA3E47" Foreground="White" FontWeight="Bold"/>
-        </StackPanel>
+    <Grid RowDefinitions="Auto, Auto, *, Auto" Margin="16">
 
-        <Border Grid.Row="1" BorderBrush="#444" BorderThickness="1" Background="#252526">
-            <Grid RowDefinitions="Auto, *">
-            
-                <Grid Grid.Row="0" ColumnDefinitions="1.2*, 1.5*, 1.8*, 1.1*, 1.1*, 0.6*, 0.6*" Background="#333" Height="30">
-                    <TextBlock Text="IP Address" Grid.Column="0" VerticalAlignment="Center" Margin="10,0" Foreground="#AAA" FontWeight="Bold"/>
-                    <TextBlock Text="MAC Address" Grid.Column="1" VerticalAlignment="Center" Margin="10,0" Foreground="#AAA" FontWeight="Bold"/>
-                    <TextBlock Text="Device" Grid.Column="2" VerticalAlignment="Center" Margin="10,0" Foreground="#AAA" FontWeight="Bold"/>
-                    <TextBlock Text="Traffic" Grid.Column="3" VerticalAlignment="Center" Margin="10,0" Foreground="#AAA" FontWeight="Bold"
-                               ToolTip.Tip="Traffic monitoring requires ARP Spoof active with Redirect ✓"/>
-                    <TextBlock Text="Cap (KB/s)" Grid.Column="4" VerticalAlignment="Center" HorizontalAlignment="Center" Foreground="#AAA" FontWeight="Bold"
+        <!-- ── Top Action Toolbar ── -->
+        <Border Grid.Row="0" Background="{StaticResource CardBackgroundBrush}"
+                BorderBrush="{StaticResource BorderDefaultBrush}" BorderThickness="1"
+                CornerRadius="8" Padding="14,10" Margin="0,0,0,12">
+            <Grid ColumnDefinitions="Auto, *, Auto, Auto, Auto">
+                <!-- Branding -->
+                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                    <Border Width="32" Height="32" CornerRadius="6" Background="{StaticResource AccentCyanBgBrush}"
+                            BorderBrush="{StaticResource AccentCyanBrush}" BorderThickness="1">
+                        <PathIcon Data="{StaticResource IconZap}" Width="16" Height="16"
+                                  Foreground="{StaticResource AccentCyanBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <StackPanel VerticalAlignment="Center">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <TextBlock Text="SelfishNet" FontWeight="Bold" FontSize="15" Foreground="{StaticResource TextPrimaryBrush}"/>
+                            <Border Background="{StaticResource CardBackgroundElevatedBrush}" CornerRadius="4" Padding="4,1" VerticalAlignment="Center">
+                                <TextBlock Text="v2.0" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource TextSecondaryBrush}"/>
+                            </Border>
+                        </StackPanel>
+                        <TextBlock Text="ARP Engine &amp; Traffic Controller" FontSize="11" Foreground="{StaticResource TextMutedBrush}"/>
+                    </StackPanel>
+                </StackPanel>
+
+                <!-- Interface Selector & Action Controls -->
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" Margin="0,0,12,0">
+                    <TextBlock Text="Interfaz:" VerticalAlignment="Center" FontSize="12.5" FontWeight="SemiBold" Foreground="{StaticResource TextSecondaryBrush}"/>
+                    <ComboBox Name="NetInterfacesBox" Width="210" Height="34" FontSize="12.5" VerticalAlignment="Center"/>
+                </StackPanel>
+
+                <Button Grid.Column="3" Name="BtnScan" Classes="primary" Click="OnScanClick" Margin="0,0,8,0" Height="34" VerticalAlignment="Center">
+                    <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                        <PathIcon Data="{StaticResource IconSearch}" Width="13" Height="13" Foreground="White" VerticalAlignment="Center"/>
+                        <TextBlock Text="Escanear Red" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
+
+                <Button Grid.Column="4" Name="BtnSpoof" Classes="danger" Click="OnSpoofClick" Height="34" VerticalAlignment="Center">
+                    <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                        <PathIcon Name="SpoofButtonIcon" Data="{StaticResource IconZap}" Width="13" Height="13" Foreground="White" VerticalAlignment="Center"/>
+                        <TextBlock Name="SpoofButtonText" Text="START ARP SPOOF" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
+            </Grid>
+        </Border>
+
+        <!-- ── Real-Time KPI Dashboard Summary Cards ── -->
+        <Grid Grid.Row="1" ColumnDefinitions="*, *, *, *" Margin="0,0,0,12">
+            <!-- Card 1: Total Devices -->
+            <Border Grid.Column="0" Background="{StaticResource CardBackgroundBrush}"
+                    BorderBrush="{StaticResource BorderDefaultBrush}" BorderThickness="1"
+                    CornerRadius="8" Padding="14,10" Margin="0,0,6,0">
+                <Grid ColumnDefinitions="*, Auto">
+                    <StackPanel Grid.Column="0" Spacing="2">
+                        <TextBlock Text="TOTAL DISPOSITIVOS" FontSize="10.5" FontWeight="Bold" Foreground="{StaticResource TextMutedBrush}"/>
+                        <TextBlock Name="KpiTotalDevices" Text="{Binding TotalDevicesCount}" FontSize="20" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}"/>
+                    </StackPanel>
+                    <Border Grid.Column="1" Width="32" Height="32" CornerRadius="6" Background="{StaticResource AccentCyanBgBrush}" VerticalAlignment="Center">
+                        <PathIcon Data="{StaticResource IconMonitor}" Width="15" Height="15" Foreground="{StaticResource AccentCyanBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                </Grid>
+            </Border>
+
+            <!-- Card 2: Intercepted (Spoofed) -->
+            <Border Grid.Column="1" Background="{StaticResource CardBackgroundBrush}"
+                    BorderBrush="{StaticResource BorderDefaultBrush}" BorderThickness="1"
+                    CornerRadius="8" Padding="14,10" Margin="3,0,3,0">
+                <Grid ColumnDefinitions="*, Auto">
+                    <StackPanel Grid.Column="0" Spacing="2">
+                        <TextBlock Text="INTERCEPTADOS" FontSize="10.5" FontWeight="Bold" Foreground="{StaticResource TextMutedBrush}"/>
+                        <TextBlock Name="KpiSpoofed" Text="{Binding SpoofedCount}" FontSize="20" FontWeight="Bold" Foreground="{StaticResource AccentCyanBrush}"/>
+                    </StackPanel>
+                    <Border Grid.Column="1" Width="32" Height="32" CornerRadius="6" Background="{StaticResource AccentCyanBgBrush}" VerticalAlignment="Center">
+                        <PathIcon Data="{StaticResource IconZap}" Width="15" Height="15" Foreground="{StaticResource AccentCyanBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                </Grid>
+            </Border>
+
+            <!-- Card 3: Blocked -->
+            <Border Grid.Column="2" Background="{StaticResource CardBackgroundBrush}"
+                    BorderBrush="{StaticResource BorderDefaultBrush}" BorderThickness="1"
+                    CornerRadius="8" Padding="14,10" Margin="3,0,3,0">
+                <Grid ColumnDefinitions="*, Auto">
+                    <StackPanel Grid.Column="0" Spacing="2">
+                        <TextBlock Text="BLOQUEADOS" FontSize="10.5" FontWeight="Bold" Foreground="{StaticResource TextMutedBrush}"/>
+                        <TextBlock Name="KpiBlocked" Text="{Binding BlockedCount}" FontSize="20" FontWeight="Bold" Foreground="{StaticResource AccentDangerBrush}"/>
+                    </StackPanel>
+                    <Border Grid.Column="1" Width="32" Height="32" CornerRadius="6" Background="{StaticResource AccentDangerBgBrush}" VerticalAlignment="Center">
+                        <PathIcon Data="{StaticResource IconBan}" Width="15" Height="15" Foreground="{StaticResource AccentDangerBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                </Grid>
+            </Border>
+
+            <!-- Card 4: Gateway Router -->
+            <Border Grid.Column="3" Background="{StaticResource CardBackgroundBrush}"
+                    BorderBrush="{StaticResource BorderDefaultBrush}" BorderThickness="1"
+                    CornerRadius="8" Padding="14,10" Margin="6,0,0,0">
+                <Grid ColumnDefinitions="*, Auto">
+                    <StackPanel Grid.Column="0" Spacing="2">
+                        <TextBlock Text="PUERTA DE ENLACE" FontSize="10.5" FontWeight="Bold" Foreground="{StaticResource TextMutedBrush}"/>
+                        <TextBlock Name="KpiGateway" Text="{Binding GatewayIpDisplay}" FontFamily="{StaticResource MonospaceFontFamily}" FontSize="13.5" FontWeight="Bold" Foreground="{StaticResource AccentWarningBrush}" VerticalAlignment="Center"/>
+                    </StackPanel>
+                    <Border Grid.Column="1" Width="32" Height="32" CornerRadius="6" Background="{StaticResource AccentWarningBgBrush}" VerticalAlignment="Center">
+                        <PathIcon Data="{StaticResource IconWifi}" Width="15" Height="15" Foreground="{StaticResource AccentWarningBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <!-- ── Elevated Device Data Table ── -->
+        <Border Grid.Row="2" BorderBrush="{StaticResource BorderDefaultBrush}" BorderThickness="1"
+                Background="{StaticResource CardBackgroundBrush}" CornerRadius="8" ClipToBounds="True">
+            <Grid RowDefinitions="Auto, Auto, *">
+
+                <!-- Table Column Headers -->
+                <Grid Grid.Row="0" ColumnDefinitions="1.2*, 1.4*, 2.4*, 1.3*, 1.0*, 0.6*, 0.6*"
+                      Background="{StaticResource HeaderBackgroundBrush}" Height="36">
+                    <TextBlock Text="IP Address" Grid.Column="0" VerticalAlignment="Center" Margin="14,0,4,0" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11.5" FontWeight="Bold"/>
+                    <TextBlock Text="MAC Address" Grid.Column="1" VerticalAlignment="Center" Margin="8,0,4,0" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11.5" FontWeight="Bold"/>
+                    <TextBlock Text="Device Identification" Grid.Column="2" VerticalAlignment="Center" Margin="8,0,4,0" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11.5" FontWeight="Bold"/>
+                    <TextBlock Text="Network Traffic" Grid.Column="3" VerticalAlignment="Center" Margin="8,0,4,0" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11.5" FontWeight="Bold"
+                               ToolTip.Tip="Live monitored bidirectional bandwidth"/>
+                    <TextBlock Text="Cap (KB/s)" Grid.Column="4" VerticalAlignment="Center" HorizontalAlignment="Center" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11.5" FontWeight="Bold"
                                ToolTip.Tip="Allowed bandwidth limit in KB/s (0 = Unlimited). Enabled when Spoof is checked."/>
-                    <TextBlock Text="Spoof" Grid.Column="5" VerticalAlignment="Center" HorizontalAlignment="Center" Foreground="#AAA" FontWeight="Bold"/>
-                    <TextBlock Text="Block" Grid.Column="6" VerticalAlignment="Center" HorizontalAlignment="Center" Foreground="#AAA" FontWeight="Bold"/>
+                    <TextBlock Text="Spoof" Grid.Column="5" VerticalAlignment="Center" HorizontalAlignment="Center" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11.5" FontWeight="Bold"
+                               ToolTip.Tip="Enable ARP redirection (MITM)"/>
+                    <TextBlock Text="Block" Grid.Column="6" VerticalAlignment="Center" HorizontalAlignment="Center" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11.5" FontWeight="Bold"
+                               ToolTip.Tip="Drop all network traffic"/>
                 </Grid>
 
-                <ListBox Grid.Row="1" Name="PcListBox" Background="Transparent">
+                <Rectangle Grid.Row="1" Fill="{StaticResource BorderDefaultBrush}" Height="1"/>
+
+                <!-- Device Items List with Row Dividers -->
+                <ListBox Grid.Row="2" Name="PcListBox" Background="Transparent" Margin="0,2,0,2">
                     <ListBox.ItemTemplate>
-                    <DataTemplate>
-                            <Grid ColumnDefinitions="1.2*, 1.5*, 1.8*, 1.1*, 1.1*, 0.6*, 0.6*">
-                                <TextBlock Grid.Column="0" Text="{Binding IpDisplay}" VerticalAlignment="Center" Foreground="White"/>
-                        
-                                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="5">
-                                    <TextBlock Text="{Binding MacDisplay}" VerticalAlignment="Center" Foreground="#DDD"/>
-                                    <TextBlock Text="(Router)" IsVisible="{Binding IsGateway}" Foreground="Yellow" VerticalAlignment="Center"/>
-                                    <TextBlock Text="(You)" IsVisible="{Binding IsLocalPc}" Foreground="Cyan" VerticalAlignment="Center"/>
-                                </StackPanel>
+                        <DataTemplate>
+                            <Border BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="0,0,0,1" Padding="0,3">
+                                <Grid ColumnDefinitions="1.2*, 1.4*, 2.4*, 1.3*, 1.0*, 0.6*, 0.6*" MinHeight="36">
 
-                                <TextBlock Grid.Column="2" Text="{Binding DeviceLabel}" VerticalAlignment="Center" Foreground="#4FC3F7" FontSize="12"/>
+                                    <!-- IP Address -->
+                                    <TextBlock Grid.Column="0" Text="{Binding IpDisplay}"
+                                               FontFamily="{StaticResource MonospaceFontFamily}"
+                                               FontSize="12.5" FontWeight="SemiBold"
+                                               Foreground="{StaticResource TextPrimaryBrush}"
+                                               VerticalAlignment="Center" Margin="14,0,4,0"/>
 
-                                <TextBlock Grid.Column="3" Text="{Binding DownloadSpeed}" VerticalAlignment="Center" Foreground="#81C784" FontSize="11"/>
+                                    <!-- MAC Address (Clean, dedicated column) -->
+                                    <TextBlock Grid.Column="1" Text="{Binding MacFormatted}"
+                                               FontFamily="{StaticResource MonospaceFontFamily}"
+                                               FontSize="12" Foreground="{StaticResource TextSecondaryBrush}"
+                                               VerticalAlignment="Center" Margin="8,0,4,0"/>
 
-                                <NumericUpDown Grid.Column="4" 
-                                               Value="{Binding BandwidthLimitKb}" 
-                                               IsEnabled="{Binding IsThrottlingEnabled}"
-                                               Minimum="0" Maximum="1048576" Increment="64"
-                                               FormatString="0"
-                                               Height="26"
-                                               FontSize="11"
-                                               Padding="4,2"
-                                               VerticalAlignment="Center" 
-                                               HorizontalAlignment="Center" 
-                                               ToolTip.Tip="Allowed bandwidth in KB/s. 0 = Unlimited."/>
+                                    <!-- Device Identification & Role Badges -->
+                                    <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center" Margin="8,0,4,0">
+                                        <!-- Gateway Badge -->
+                                        <Border IsVisible="{Binding IsGateway}" Background="{StaticResource AccentWarningBgBrush}"
+                                                BorderBrush="{StaticResource AccentWarningBrush}" BorderThickness="1"
+                                                CornerRadius="4" Padding="5,1" VerticalAlignment="Center">
+                                            <TextBlock Text="GATEWAY" FontSize="9" FontWeight="Bold"
+                                                       Foreground="{StaticResource AccentWarningBrush}"/>
+                                        </Border>
 
-                                <CheckBox Grid.Column="5" IsChecked="{Binding Redirect}" IsEnabled="{Binding CanControl}" HorizontalAlignment="Center"/>
-                        
-                                <CheckBox Grid.Column="6" IsChecked="{Binding Block}" IsEnabled="{Binding CanControl}" HorizontalAlignment="Center"/>
-                            </Grid>
+                                        <!-- Local Host (You) Badge -->
+                                        <Border IsVisible="{Binding IsLocalPc}" Background="{StaticResource AccentCyanBgBrush}"
+                                                BorderBrush="{StaticResource AccentCyanBrush}" BorderThickness="1"
+                                                CornerRadius="4" Padding="5,1" VerticalAlignment="Center">
+                                            <TextBlock Text="YOU" FontSize="9" FontWeight="Bold"
+                                                       Foreground="{StaticResource AccentCyanBrush}"/>
+                                        </Border>
+
+                                        <!-- Device Label (with character ellipsis protection) -->
+                                        <TextBlock Text="{Binding DeviceLabel}"
+                                                   FontSize="12.5" Foreground="{StaticResource TextPrimaryBrush}"
+                                                   TextTrimming="CharacterEllipsis"
+                                                   VerticalAlignment="Center"
+                                                   ToolTip.Tip="{Binding DeviceLabel}"/>
+                                    </StackPanel>
+
+                                    <!-- Dynamic Traffic Speed (Emerald if active, Muted if idle) -->
+                                    <TextBlock Grid.Column="3" Text="{Binding DownloadSpeed}"
+                                               FontFamily="{StaticResource MonospaceFontFamily}"
+                                               FontSize="11.5" Foreground="{Binding TrafficBrushHex}"
+                                               TextTrimming="CharacterEllipsis"
+                                               VerticalAlignment="Center" Margin="8,0,4,0"/>
+
+                                    <!-- Bandwidth Throttle Spinner -->
+                                    <NumericUpDown Grid.Column="4"
+                                                   Value="{Binding BandwidthLimitKb}"
+                                                   IsEnabled="{Binding IsThrottlingEnabled}"
+                                                   Minimum="0" Maximum="1048576" Increment="64"
+                                                   FormatString="0"
+                                                   Height="28"
+                                                   FontSize="11.5"
+                                                   Padding="2,1"
+                                                   VerticalAlignment="Center"
+                                                   HorizontalAlignment="Center"
+                                                   Width="84"
+                                                   ToolTip.Tip="Allowed bandwidth in KB/s. 0 = Unlimited."/>
+
+                                    <!-- Spoof Action Checkbox -->
+                                    <CheckBox Grid.Column="5" Classes="spoof-check"
+                                              IsChecked="{Binding Redirect}"
+                                              IsEnabled="{Binding CanControl}"
+                                              HorizontalAlignment="Center" VerticalAlignment="Center"/>
+
+                                    <!-- Block Action Checkbox -->
+                                    <CheckBox Grid.Column="6" Classes="block-check"
+                                              IsChecked="{Binding Block}"
+                                              IsEnabled="{Binding CanControl}"
+                                              HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Grid>
+                            </Border>
                         </DataTemplate>
                     </ListBox.ItemTemplate>
                 </ListBox>
             </Grid>
         </Border>
 
-        <TextBlock Grid.Row="2" Text="Ready." Name="StatusText" Foreground="Gray" Margin="0,5,0,0"/>
+        <!-- ── Bottom Footer & Status Bar ── -->
+        <Grid Grid.Row="3" ColumnDefinitions="Auto, *, Auto" Margin="0,10,0,0">
+            <!-- Left: Live Status Pill -->
+            <Border Grid.Column="0" Name="StatusPillBorder" Background="{StaticResource CardBackgroundBrush}"
+                    BorderBrush="{StaticResource BorderDefaultBrush}" BorderThickness="1"
+                    CornerRadius="14" Padding="12,5" VerticalAlignment="Center">
+                <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                    <Ellipse Name="StatusDot" Width="8" Height="8" Fill="{StaticResource AccentSuccessBrush}" VerticalAlignment="Center"/>
+                    <TextBlock Name="StatusText" Text="Ready." Foreground="{StaticResource TextSecondaryBrush}" FontSize="12" FontWeight="Medium" VerticalAlignment="Center"/>
+                </StackPanel>
+            </Border>
+
+            <!-- Right: Network Metadata -->
+            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="16" VerticalAlignment="Center">
+                <TextBlock Name="LocalIpText" Text="Local: —" Foreground="{StaticResource TextMutedBrush}" FontSize="11.5" FontFamily="{StaticResource MonospaceFontFamily}" VerticalAlignment="Center"/>
+                <TextBlock Name="SubnetText" Text="Subnet: —" Foreground="{StaticResource TextMutedBrush}" FontSize="11.5" FontFamily="{StaticResource MonospaceFontFamily}" VerticalAlignment="Center"/>
+            </StackPanel>
+        </Grid>
     </Grid>
 </Window>

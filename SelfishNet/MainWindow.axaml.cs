@@ -1,31 +1,120 @@
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
+using Avalonia.Media;
 using Avalonia.Threading;
 using SharpPcap.LibPcap;
 using System;
 using System.Collections.ObjectModel;
+using System.Collections.Specialized;
+using System.ComponentModel;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 
 namespace SelfishNet
 {
-    public partial class MainWindow : Window
+    public partial class MainWindow : Window, INotifyPropertyChanged
     {
         private CArp _engine;
         private IDeviceIdentifierService _identifierService;
         public ObservableCollection<PC> DetectedPCs { get; set; }
 
+        // ── Dashboard Metrics Properties ──
+
+        private int _totalDevicesCount = 0;
+        public int TotalDevicesCount
+        {
+            get => _totalDevicesCount;
+            set { if (_totalDevicesCount != value) { _totalDevicesCount = value; OnPropertyChanged(); } }
+        }
+
+        private int _spoofedCount = 0;
+        public int SpoofedCount
+        {
+            get => _spoofedCount;
+            set { if (_spoofedCount != value) { _spoofedCount = value; OnPropertyChanged(); } }
+        }
+
+        private int _blockedCount = 0;
+        public int BlockedCount
+        {
+            get => _blockedCount;
+            set { if (_blockedCount != value) { _blockedCount = value; OnPropertyChanged(); } }
+        }
+
+        private string _gatewayIpDisplay = "—";
+        public string GatewayIpDisplay
+        {
+            get => _gatewayIpDisplay;
+            set { if (_gatewayIpDisplay != value) { _gatewayIpDisplay = value; OnPropertyChanged(); } }
+        }
+
         public MainWindow()
         {
             InitializeComponent();
+            DataContext = this;
+
             DetectedPCs = new ObservableCollection<PC>();
+            DetectedPCs.CollectionChanged += OnDetectedPcsCollectionChanged;
 
             var listBox = this.FindControl<ListBox>("PcListBox");
-            listBox.ItemsSource = DetectedPCs;
+            if (listBox != null)
+            {
+                listBox.ItemsSource = DetectedPCs;
+            }
 
             AppDomain.CurrentDomain.ProcessExit += (s, e) => Cleanup();
 
             LoadInterfaces();
+        }
+
+        private void OnDetectedPcsCollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
+        {
+            if (e.NewItems != null)
+            {
+                foreach (PC pc in e.NewItems)
+                {
+                    pc.PropertyChanged += OnPcPropertyChanged;
+                    if (pc.IsGateway && pc.Ip != null)
+                    {
+                        GatewayIpDisplay = pc.Ip.ToString();
+                    }
+                }
+            }
+
+            if (e.OldItems != null)
+            {
+                foreach (PC pc in e.OldItems)
+                {
+                    pc.PropertyChanged -= OnPcPropertyChanged;
+                }
+            }
+
+            RecalculateDashboardMetrics();
+        }
+
+        private void OnPcPropertyChanged(object sender, PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName == nameof(PC.Redirect) ||
+                e.PropertyName == nameof(PC.Block) ||
+                e.PropertyName == nameof(PC.IsGateway))
+            {
+                RecalculateDashboardMetrics();
+            }
+        }
+
+        private void RecalculateDashboardMetrics()
+        {
+            TotalDevicesCount = DetectedPCs.Count;
+            SpoofedCount = DetectedPCs.Count(p => p.Redirect);
+            BlockedCount = DetectedPCs.Count(p => p.Block);
+
+            var gateway = DetectedPCs.FirstOrDefault(p => p.IsGateway);
+            if (gateway?.Ip != null)
+            {
+                GatewayIpDisplay = gateway.Ip.ToString();
+            }
         }
 
         private void LoadInterfaces()
@@ -38,44 +127,50 @@ namespace SelfishNet
                     a.Addr.ipAddress.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork)).ToList();
 
                 var combo = this.FindControl<ComboBox>("NetInterfacesBox");
-                combo.ItemsSource = validDevices;
-                combo.DisplayMemberBinding = new Avalonia.Data.Binding("Name");
+                if (combo != null)
+                {
+                    combo.ItemsSource = validDevices;
+                    combo.DisplayMemberBinding = new Avalonia.Data.Binding("Name");
 
-                if (validDevices.Any())
-                {
-                    combo.SelectedIndex = 0;
-                    SetStatus($"{validDevices.Count} interface(s) detected.", "#8BC34A");
-                }
-                else
-                {
-                    SetStatus("⚠ No valid network interfaces detected.", "#FF9800");
+                    if (validDevices.Any())
+                    {
+                        combo.SelectedIndex = 0;
+                        SetStatus($"{validDevices.Count} interface(s) detected.", "success");
+                    }
+                    else
+                    {
+                        SetStatus("No valid network interfaces detected.", "warning");
+                    }
                 }
             }
             catch (Exception ex)
             {
-                SetStatus($"❌ Error loading interfaces: {ex.Message}", "#F44336");
+                SetStatus($"Error loading interfaces: {ex.Message}", "error");
             }
         }
 
         public async void OnScanClick(object sender, RoutedEventArgs e)
         {
             var combo = this.FindControl<ComboBox>("NetInterfacesBox");
-            var device = combo.SelectedItem as LibPcapLiveDevice;
+            var device = combo?.SelectedItem as LibPcapLiveDevice;
             if (device == null)
             {
-                SetStatus("⚠ Select a network interface first.", "#FF9800");
+                SetStatus("Select a network interface first.", "warning");
                 return;
             }
 
             var btnScan = this.FindControl<Button>("BtnScan");
             var btnSpoof = this.FindControl<Button>("BtnSpoof");
+            var spoofText = this.FindControl<TextBlock>("SpoofButtonText");
+            var spoofIcon = this.FindControl<Avalonia.Controls.PathIcon>("SpoofButtonIcon");
+
             if (btnScan != null) btnScan.IsEnabled = false;
             if (btnSpoof != null) btnSpoof.IsEnabled = false;
 
             // If engine exists, stop previous operations asynchronously
             if (_engine != null || _identifierService != null)
             {
-                SetStatus("Stopping previous scan and releasing network resources...", "#FF9800");
+                SetStatus("Stopping previous scan and releasing network resources...", "warning");
                 var oldEngine = _engine;
                 var oldIdService = _identifierService;
                 _engine = null;
@@ -101,16 +196,22 @@ namespace SelfishNet
 
                 if (btnSpoof != null)
                 {
-                    btnSpoof.Content = "⚡ START ARP SPOOF";
-                    btnSpoof.Background = Avalonia.Media.SolidColorBrush.Parse("#CA3E47");
+                    btnSpoof.Classes.Clear();
+                    btnSpoof.Classes.Add("danger");
+                }
+                if (spoofText != null) spoofText.Text = "START ARP SPOOF";
+                if (spoofIcon != null && Application.Current?.Resources.TryGetResource("IconZap", null, out var zapGeom) == true)
+                {
+                    spoofIcon.Data = zapGeom as Geometry;
                 }
             }
 
             DetectedPCs.Clear();
+            GatewayIpDisplay = "—";
 
             try
             {
-                SetStatus("Initializing network scan...", "#29B6F6");
+                SetStatus("Initializing network scan...", "info");
 
                 var deviceList = new PcList();
                 deviceList.SetOnDeviceAdded((newPc) =>
@@ -118,7 +219,7 @@ namespace SelfishNet
                     Dispatcher.UIThread.InvokeAsync(() =>
                     {
                         DetectedPCs.Add(newPc);
-                        SetStatus($"🔍 {DetectedPCs.Count} device(s) detected on the network.", "#8BC34A");
+                        SetStatus($"{DetectedPCs.Count} device(s) detected on the network.", "success");
                     });
                 });
 
@@ -140,15 +241,27 @@ namespace SelfishNet
                 _engine = newEngine;
                 _identifierService = newIdService;
 
-                // Show detected network info
+                // Show detected network info in metadata footer
                 string localIp = _engine.LocalIp != null ? new System.Net.IPAddress(_engine.LocalIp).ToString() : "N/A";
                 string routerIp = _engine.RouterIp != null ? new System.Net.IPAddress(_engine.RouterIp).ToString() : "N/A";
                 string subnet = _engine.SubnetMask != null ? new System.Net.IPAddress(_engine.SubnetMask).ToString() : "/24 (fallback)";
-                SetStatus($"Scanning... Local: {localIp} | Gateway: {routerIp} | Mask: {subnet}", "#29B6F6");
+
+                if (!string.IsNullOrEmpty(routerIp) && routerIp != "N/A")
+                {
+                    GatewayIpDisplay = routerIp;
+                }
+
+                var localIpText = this.FindControl<TextBlock>("LocalIpText");
+                if (localIpText != null) localIpText.Text = $"Local: {localIp}";
+
+                var subnetText = this.FindControl<TextBlock>("SubnetText");
+                if (subnetText != null) subnetText.Text = $"Subnet: {subnet}";
+
+                SetStatus($"Active scan on {device.Name}", "info");
             }
             catch (Exception ex)
             {
-                SetStatus($"❌ Error starting scan: {ex.Message}", "#F44336");
+                SetStatus($"Error starting scan: {ex.Message}", "error");
                 Console.WriteLine($"[SCAN ERROR] {ex}");
             }
             finally
@@ -162,36 +275,54 @@ namespace SelfishNet
         {
             if (_engine == null)
             {
-                SetStatus("⚠ Scan the network before starting spoof.", "#FF9800");
+                SetStatus("Scan the network before starting spoof.", "warning");
                 return;
             }
 
             var btn = this.FindControl<Button>("BtnSpoof");
+            var spoofText = this.FindControl<TextBlock>("SpoofButtonText");
+            var spoofIcon = this.FindControl<Avalonia.Controls.PathIcon>("SpoofButtonIcon");
             if (btn == null) return;
             btn.IsEnabled = false;
 
             try
             {
-                if (btn.Content.ToString().Contains("START"))
+                bool isStarting = spoofText?.Text?.Contains("START") == true;
+
+                if (isStarting)
                 {
                     if (_engine.RouterMac == null)
                     {
-                        SetStatus("❌ Router MAC not detected. Scan again.", "#F44336");
+                        SetStatus("Router MAC not detected. Scan again.", "error");
                         return;
                     }
 
                     await Task.Run(() => _engine.StartSpoofing());
-                    btn.Content = "⛔ STOP SPOOF";
-                    btn.Background = Avalonia.Media.SolidColorBrush.Parse("#444");
-                    SetStatus("⚡ ARP Spoof active — intercepting traffic.", "#F44336");
+
+                    btn.Classes.Clear();
+                    btn.Classes.Add("active-stop");
+                    if (spoofText != null) spoofText.Text = "STOP SPOOF";
+                    if (spoofIcon != null && Application.Current?.Resources.TryGetResource("IconStopCircle", null, out var stopGeom) == true)
+                    {
+                        spoofIcon.Data = stopGeom as Geometry;
+                    }
+
+                    SetStatus("ARP Spoof active — intercepting traffic.", "error");
                 }
                 else
                 {
-                    SetStatus("Stopping spoof and restoring network tables...", "#FF9800");
+                    SetStatus("Stopping spoof and restoring network tables...", "warning");
                     await Task.Run(() => _engine.StopSpoofing());
-                    btn.Content = "⚡ START ARP SPOOF";
-                    btn.Background = Avalonia.Media.SolidColorBrush.Parse("#CA3E47");
-                    SetStatus("Spoof stopped. Network restored.", "#8BC34A");
+
+                    btn.Classes.Clear();
+                    btn.Classes.Add("danger");
+                    if (spoofText != null) spoofText.Text = "START ARP SPOOF";
+                    if (spoofIcon != null && Application.Current?.Resources.TryGetResource("IconZap", null, out var zapGeom) == true)
+                    {
+                        spoofIcon.Data = zapGeom as Geometry;
+                    }
+
+                    SetStatus("Spoof stopped. Network restored.", "success");
                 }
             }
             finally
@@ -201,23 +332,58 @@ namespace SelfishNet
         }
 
         /// <summary>
-        /// Updates the status bar with a message and color.
+        /// Updates the status pill with a message and semantic level (success, info, warning, error).
         /// Thread-safe: can be called from any thread.
         /// </summary>
-        private void SetStatus(string message, string hexColor = "#888")
+        private void SetStatus(string message, string level = "info")
         {
             if (Dispatcher.UIThread.CheckAccess())
             {
                 var status = this.FindControl<TextBlock>("StatusText");
+                var dot = this.FindControl<Avalonia.Controls.Shapes.Ellipse>("StatusDot");
+                var border = this.FindControl<Border>("StatusPillBorder");
+
                 if (status != null)
                 {
                     status.Text = message;
-                    status.Foreground = Avalonia.Media.SolidColorBrush.Parse(hexColor);
+                }
+
+                Color dotColor;
+                Color borderBg;
+
+                switch (level.ToLowerInvariant())
+                {
+                    case "success":
+                        dotColor = Color.Parse("#3FB950");
+                        borderBg = Color.Parse("#161B22");
+                        break;
+                    case "warning":
+                        dotColor = Color.Parse("#D29922");
+                        borderBg = Color.Parse("#271E0B");
+                        break;
+                    case "error":
+                        dotColor = Color.Parse("#F85149");
+                        borderBg = Color.Parse("#261214");
+                        break;
+                    case "info":
+                    default:
+                        dotColor = Color.Parse("#58A6FF");
+                        borderBg = Color.Parse("#161B22");
+                        break;
+                }
+
+                if (dot != null)
+                {
+                    dot.Fill = new SolidColorBrush(dotColor);
+                }
+                if (border != null)
+                {
+                    border.Background = new SolidColorBrush(borderBg);
                 }
             }
             else
             {
-                Dispatcher.UIThread.InvokeAsync(() => SetStatus(message, hexColor));
+                Dispatcher.UIThread.InvokeAsync(() => SetStatus(message, level));
             }
         }
 
@@ -238,6 +404,15 @@ namespace SelfishNet
         {
             Cleanup();
             base.OnClosed(e);
+        }
+
+        // ── INotifyPropertyChanged ──
+
+        public new event PropertyChangedEventHandler PropertyChanged;
+
+        private void OnPropertyChanged([CallerMemberName] string propertyName = null)
+        {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
     }
 }
