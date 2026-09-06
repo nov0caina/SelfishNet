@@ -4,7 +4,7 @@
 [Currently in development]
 
 > [!WARNING]
-> **Security Notice:** This GitHub repository (`https://github.com/abelmez/SelfishNet`) is the **only official source** for this modern rewrite. Third-party domains (such as `selfishnet.org` and other unauthorized portals) have no affiliation with this project, distribute unauthorized copies, and may pose security risks. Do not download or execute untrusted binaries from third-party sites.
+> **Security Notice:** This GitHub repository (`https://github.com/nov0caina/SelfishNet`) is the **only official source** for this modern rewrite. Third-party domains (such as `selfishnet.org` and other unauthorized portals) have no affiliation with this project, distribute unauthorized copies, and may pose security risks. Do not download or execute untrusted binaries from third-party sites.
 
 
 ## Linux Native (Cross-Platform) Migration (Branch: linuxDevEnv_migration)
@@ -58,7 +58,7 @@ ________________________________________________________________________________
 ## Migración a Linux Native (Multi-Plataforma) (Rama: linuxDevEnv_migration)
 
 > [!WARNING]
-> **Aviso de Seguridad:** Este repositorio de GitHub (`https://github.com/abelmez/SelfishNet`) es la **única fuente oficial** de este desarrollo moderno. Dominios de terceros (como `selfishnet.org` u otros portales no autorizados) no tienen relación con este proyecto, redistribuyen copias sin autorización y pueden representar riesgos de seguridad. No descargues ni ejecutes binarios de fuentes no verificadas.
+> **Aviso de Seguridad:** Este repositorio de GitHub (`https://github.com/nov0caina/SelfishNet`) es la **única fuente oficial** de este desarrollo moderno. Dominios de terceros (como `selfishnet.org` u otros portales no autorizados) no tienen relación con este proyecto, redistribuyen copias sin autorización y pueden representar riesgos de seguridad. No descargues ni ejecutes binarios de fuentes no verificadas.
 
 Esta rama contiene la reescritura completa del núcleo y la interfaz de SelfishNet para permitir su ejecución nativa en **Linux** y MacOS, eliminando la dependencia exclusiva de Windows.
 
